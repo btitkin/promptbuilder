@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prompt Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'gray-900': '#121212',
+              'gray-800': '#1E1E1E',
+              'gray-700': '#2C2C2C',
+              'gray-600': '#3E3E3E',
+              'gray-400': '#A0A0A0',
+              'gray-200': '#E0E0E0',
+              'accent': '#6366F1',
+              'accent-hover': '#4F46E5',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      @keyframes fade-in {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fade-in 0.3s ease-out forwards;
+      }
+    </style>
+
+
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.17.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/promptbuilder/assets/index-Ciqj1bpg.js"></script>
+</head>
+  <body class="bg-gray-900 text-gray-200 antialiased">
+    <div id="root"></div>
+  </body>
+</html>
