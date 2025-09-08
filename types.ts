@@ -1,4 +1,5 @@
 
+
 export interface ModelConfig {
   name: string;
   supportsBreak: boolean;
@@ -61,6 +62,40 @@ export interface NsfwSettingsState {
   aiImagination: boolean;
 }
 
+export type Gender = 'any' | 'male' | 'female' | 'mixed';
+export type AgeRange = 'any' | '18s' | '25s' | '30s' | '40s' | '50s' | '60s' | '70+';
+
+export type FemaleBodyType = 'slim' | 'curvy' | 'athletic' | 'instagram model';
+export type MaleBodyType = 'slim' | 'fat' | 'muscular' | 'big muscular';
+
+export type Ethnicity = 'any' | 'caucasian' | 'european' | 'scandinavian' | 'slavic' | 'mediterranean' | 'asian' | 'japanese' | 'chinese' | 'korean' | 'indian' | 'african' | 'hispanic' | 'middle eastern' | 'native american';
+export type HeightRange = 'any' | 'very short (<150cm)' | 'short (150-165cm)' | 'average (165-180cm)' | 'tall (>180cm)';
+
+// Female specific
+export type BreastSize = 'any' | 'flat' | 'small' | 'medium' | 'large' | 'huge' | 'gigantic';
+export type HipsSize = 'any' | 'narrow' | 'average' | 'wide' | 'extra wide';
+export type ButtSize = 'any' | 'flat' | 'small' | 'average' | 'large' | 'bubble';
+
+// Male specific
+export type PenisSize = 'any' | 'small' | 'average' | 'large' | 'huge' | 'horse-hung';
+export type MuscleDefinition = 'any' | 'soft' | 'toned' | 'defined' | 'ripped' | 'bodybuilder';
+export type FacialHair = 'any' | 'clean-shaven' | 'stubble' | 'goatee' | 'mustache' | 'full beard';
+
+
+export interface CharacterSettingsState {
+  gender: Gender;
+  age: AgeRange;
+  bodyType: 'any' | FemaleBodyType | MaleBodyType;
+  ethnicity: Ethnicity;
+  height: HeightRange;
+  breastSize: BreastSize;
+  hipsSize: HipsSize;
+  buttSize: ButtSize;
+  penisSize: PenisSize;
+  muscleDefinition: MuscleDefinition;
+  facialHair: FacialHair;
+}
+
 export type RealisticStyle = 'professional' | 'amateur' | 'flash';
 export type AnimeStyle = 'ghibli' | 'naruto' | 'bleach';
 
@@ -76,4 +111,10 @@ export interface ApiConfigState {
   keys: {
     [key in ApiProvider]?: string;
   };
+}
+
+export interface PromptSnippet {
+  id: string;
+  name: string;
+  content: string;
 }

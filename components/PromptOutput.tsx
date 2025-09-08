@@ -1,15 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { CopyIcon, CheckIcon, ShareIcon } from './icons';
+import { CopyIcon, CheckIcon, ShareIcon, ImageIcon } from './icons';
+import { InfoTooltip } from './InfoTooltip';
 
 interface PromptOutputProps {
   prompts: string[];
   isLoading: boolean;
   selectedModel: string;
   negativePrompt: string;
+  supportsImageGeneration: boolean;
+  onSendToGenerator: (prompt: string) => void;
 }
 
-export const PromptOutput: React.FC<PromptOutputProps> = ({ prompts, isLoading, selectedModel, negativePrompt }) => {
+export const PromptOutput: React.FC<PromptOutputProps> = ({ prompts, isLoading, selectedModel, negativePrompt, supportsImageGeneration, onSendToGenerator }) => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [sharedIndex, setSharedIndex] = useState<number | null>(null);
   const [isNegativeCopied, setIsNegativeCopied] = useState<boolean>(false);
@@ -86,11 +89,22 @@ export const PromptOutput: React.FC<PromptOutputProps> = ({ prompts, isLoading, 
         {!isLoading && prompts.map((prompt, index) => {
           const isCopied = copiedIndex === index;
           const isShared = sharedIndex === index;
+          const imageButtonTooltip = supportsImageGeneration ? "Generate Image" : "Image generation only available for Gemini or OpenAI";
           return (
             <div key={index} className="relative bg-gray-900 rounded-md p-4 text-gray-200 whitespace-pre-wrap font-mono text-sm border border-gray-700">
               <h4 className="text-xs font-semibold text-indigo-400 mb-2 uppercase">Variation {index + 1}</h4>
               <p>{prompt}</p>
               <div className="absolute top-2 right-2 flex gap-2">
+                  <div title={imageButtonTooltip}>
+                    <button
+                        onClick={() => onSendToGenerator(prompt)}
+                        className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-colors bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-700"
+                        aria-label={`Generate image for variation ${index + 1}`}
+                        disabled={!supportsImageGeneration}
+                    >
+                        <ImageIcon />
+                    </button>
+                  </div>
                   <button
                       onClick={() => handleShare(prompt, index)}
                       className={`p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${
