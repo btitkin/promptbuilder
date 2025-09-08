@@ -1,6 +1,7 @@
 
-import type { ApiProvider, NsfwSettingsState, StyleFilter, StructuredPrompt, CharacterSettingsState } from '../types';
+import type { ApiProvider, NsfwSettingsState, StyleFilter, StructuredPrompt, CharacterSettingsState, CustomApiConfig } from '../types';
 import * as gemini from './geminiService';
+import * as customApi from './customApiService';
 
 // This is a facade that will route to the correct provider.
 // For now, it only knows about Gemini, but it can be extended.
@@ -20,6 +21,7 @@ const providers: { [K in ApiProvider]: typeof gemini | typeof notImplementedServ
     together: notImplementedService,
     perplexity: notImplementedService,
     cohere: notImplementedService,
+    custom_local: customApi,
 };
 
 function getProvider(provider: ApiProvider) {
@@ -38,8 +40,12 @@ export const generatePromptVariations = (
     nsfwSettings: NsfwSettingsState, 
     styleFilter: StyleFilter, 
     selectedModel: string,
-    characterSettings: CharacterSettingsState
+    characterSettings: CharacterSettingsState,
+    customConfig?: CustomApiConfig
 ): Promise<{ structuredPrompts: StructuredPrompt[], negativePrompt: string }> => {
+    if (provider === 'custom_local' && customConfig) {
+        return customApi.generatePromptVariations(customConfig, userInput, numVariations, nsfwSettings, styleFilter, selectedModel, characterSettings);
+    }
     const service = getProvider(provider);
     return service.generatePromptVariations(apiKey, userInput, numVariations, nsfwSettings, styleFilter, selectedModel, characterSettings);
 };
@@ -50,8 +56,12 @@ export const enhanceDescription = (
     userInput: string, 
     nsfwSettings: NsfwSettingsState, 
     styleFilter: StyleFilter,
-    characterSettings: CharacterSettingsState
+    characterSettings: CharacterSettingsState,
+    customConfig?: CustomApiConfig
 ): Promise<string> => {
+    if (provider === 'custom_local' && customConfig) {
+        return customApi.enhanceDescription(customConfig, userInput, nsfwSettings, styleFilter, characterSettings);
+    }
     const service = getProvider(provider);
     return service.enhanceDescription(apiKey, userInput, nsfwSettings, styleFilter, characterSettings);
 };
@@ -62,8 +72,12 @@ export const generateRandomDescription = (
     nsfwSettings: NsfwSettingsState,
     styleFilter: StyleFilter,
     characterSettings: CharacterSettingsState,
-    selectedPresets: string[]
+    selectedPresets: string[],
+    customConfig?: CustomApiConfig
 ): Promise<string> => {
+    if (provider === 'custom_local' && customConfig) {
+        return customApi.generateRandomDescription(customConfig, nsfwSettings, styleFilter, characterSettings, selectedPresets);
+    }
     const service = getProvider(provider);
     return service.generateRandomDescription(apiKey, nsfwSettings, styleFilter, characterSettings, selectedPresets);
 }
@@ -73,11 +87,17 @@ export const generateImage = (
     apiKey: string,
     prompt: string,
     resolution: '1k' | '2k',
-    aspectRatio: string
+    aspectRatio: string,
+    customConfig?: CustomApiConfig
 ): Promise<string> => {
     switch (provider) {
         case 'google_gemini':
             return gemini.generateImage(apiKey, prompt, resolution, aspectRatio);
+        case 'custom_local':
+            if (customConfig) {
+                return customApi.generateImage(customConfig, prompt, resolution, aspectRatio);
+            }
+            return Promise.reject(new Error("Custom API configuration is required for image generation."));
         case 'openai':
             return Promise.reject(new Error("OpenAI image generation is not yet implemented."));
         default:

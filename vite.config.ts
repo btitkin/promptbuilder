@@ -3,8 +3,10 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const isElectron = process.env.ELECTRON === 'true';
+    
     return {
-      base: '/promptbuilder/',
+      base: isElectron ? './' : '/promptbuilder/',
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
@@ -15,7 +17,11 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
-        outDir: 'dist'
+        outDir: 'dist',
+        emptyOutDir: true
+      },
+      server: {
+        port: 5173
       }
     };
 });

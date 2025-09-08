@@ -251,6 +251,16 @@ const App: React.FC = () => {
 
   const withApiKeyCheck = <T extends any[]>(callback: (apiKey: string, ...args: T) => Promise<void>) => {
       return async (...args: T) => {
+          if (apiConfig.provider === 'custom_local') {
+              if (!apiConfig.customConfig?.url || !apiConfig.customConfig?.model) {
+                  setError('Custom API configuration is incomplete. Please set URL and model in API Settings.');
+                  setShowApiSettings(true);
+                  return;
+              }
+              await callback('', ...args); // Empty API key for custom local
+              return;
+          }
+          
           const apiKey = apiConfig.keys?.[apiConfig.provider];
           if (!apiKey) {
               setError(`API Key for ${apiConfig.provider} is not set. Please add one in API Settings.`);
@@ -267,7 +277,7 @@ const App: React.FC = () => {
     setError(null);
     setGeneratedPrompts([]);
     try {
-      const { structuredPrompts, negativePrompt } = await aiService.generatePromptVariations(apiConfig.provider, apiKey, userInput, numVariations, nsfwSettings, styleFilter, selectedModel, characterSettings);
+      const { structuredPrompts, negativePrompt } = await aiService.generatePromptVariations(apiConfig.provider, apiKey, userInput, numVariations, nsfwSettings, styleFilter, selectedModel, characterSettings, apiConfig.customConfig);
       const formattedPrompts = structuredPrompts.map(p => formatSinglePrompt(p));
       setGeneratedPrompts(formattedPrompts);
       if (negativePrompt) setAdvancedSettings(prev => ({...prev, negativePrompt}));
@@ -291,7 +301,7 @@ const App: React.FC = () => {
     setIsEnhancing(true);
     setError(null);
     try {
-        const enhancedText = await aiService.enhanceDescription(apiConfig.provider, apiKey, userInput, nsfwSettings, styleFilter, characterSettings);
+        const enhancedText = await aiService.enhanceDescription(apiConfig.provider, apiKey, userInput, nsfwSettings, styleFilter, characterSettings, apiConfig.customConfig);
         setUserInput(enhancedText);
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
@@ -311,7 +321,7 @@ const App: React.FC = () => {
         ...selectedClothingPresets,
     ];
     try {
-      const randomDescription = await aiService.generateRandomDescription(apiConfig.provider, apiKey, nsfwSettings, styleFilter, characterSettings, allSelectedPresets);
+      const randomDescription = await aiService.generateRandomDescription(apiConfig.provider, apiKey, nsfwSettings, styleFilter, characterSettings, allSelectedPresets, apiConfig.customConfig);
       setUserInput(randomDescription);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
