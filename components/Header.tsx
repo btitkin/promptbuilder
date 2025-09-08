@@ -1,13 +1,12 @@
 import React from 'react';
 import { InfoTooltip } from './InfoTooltip';
+import { Logo } from './Logo';
 
 export const Header: React.FC = () => {
   return (
     <header className="text-center">
       <div className="flex items-center justify-center gap-2">
-        <h1 className="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">
-          Prompt Builder
-        </h1>
+        <Logo className="h-12 w-auto" />
         <InfoTooltip 
           text="Prompt Builder intelligently transforms your simple descriptions into perfectly structured, model-specific prompts. It handles complex syntax, BREAK statements, and content rules, saving you time and maximizing the quality of your results." 
         />

@@ -34,6 +34,21 @@
       .animate-fade-in {
         animation: fade-in 0.3s ease-out forwards;
       }
+      @keyframes logo-fade-in-scale {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      .animate-logo-fade-in-scale { animation: logo-fade-in-scale 0.8s ease-out forwards; }
+      @keyframes overlay-fade-out {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+      .animate-overlay-fade-out { animation: overlay-fade-out 0.5s ease-in forwards; }
+      @keyframes blink {
+        from, to { opacity: 1; }
+        50% { opacity: 0; }
+      }
+      .animate-blink { animation: blink 1s step-end infinite; }
     </style>
   <script type="importmap">
 {

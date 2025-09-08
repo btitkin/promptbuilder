@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ModelSelector } from './components/ModelSelector';
@@ -20,6 +21,8 @@ import { PromptSnippets } from './components/PromptSnippets';
 import { SaveSnippetModal } from './components/SaveSnippetModal';
 import { ImageGenerator } from './components/ImageGenerator';
 import { Instructions } from './components/Instructions';
+import { LogoAnimation } from './components/LogoAnimation';
+import { AgeVerificationModal } from './components/AgeVerificationModal';
 import { MODEL_NAMES, MODELS } from './constants';
 import type { StructuredPrompt, AdvancedSettingsState, NsfwSettingsState, StyleFilter as StyleFilterType, ApiConfigState, CharacterSettingsState, PromptSnippet } from './types';
 import * as aiService from './services/aiService';
@@ -108,11 +111,21 @@ const App: React.FC = () => {
 
   // State for UI sections
   const [showInstructions, setShowInstructions] = useState<boolean>(false);
+  const [showLogoAnimation, setShowLogoAnimation] = useState<boolean>(true);
+  const [isAgeVerified, setIsAgeVerified] = useState<boolean>(() => {
+    try {
+        return localStorage.getItem('ageVerified') === 'true';
+    } catch {
+        return false;
+    }
+  });
 
   const currentModelConfig = useMemo(() => MODELS[selectedModel], [selectedModel]);
   const supportsImageGeneration = useMemo(() => ['google_gemini', 'openai'].includes(apiConfig.provider), [apiConfig.provider]);
   
   useEffect(() => {
+    const animationTimer = setTimeout(() => setShowLogoAnimation(false), 4000);
+
     const urlParams = new URLSearchParams(window.location.search);
     const sharedPrompt = urlParams.get('prompt');
     const sharedModel = urlParams.get('model');
@@ -148,6 +161,8 @@ const App: React.FC = () => {
         setShowApiSettings(true);
       }
     } catch (e) { console.error("Failed to load API config", e); }
+    
+    return () => clearTimeout(animationTimer);
   }, []);
 
   useEffect(() => {
@@ -165,7 +180,7 @@ const App: React.FC = () => {
   useEffect(() => {
     try {
         localStorage.setItem('apiConfig', JSON.stringify(apiConfig));
-        if (!apiConfig.keys[apiConfig.provider]) {
+        if (!apiConfig.keys?.[apiConfig.provider]) {
             setShowApiSettings(true);
         }
     } catch (e) { console.error("Failed to save API config", e); }
@@ -234,7 +249,7 @@ const App: React.FC = () => {
 
   const withApiKeyCheck = <T extends any[]>(callback: (apiKey: string, ...args: T) => Promise<void>) => {
       return async (...args: T) => {
-          const apiKey = apiConfig.keys[apiConfig.provider];
+          const apiKey = apiConfig.keys?.[apiConfig.provider];
           if (!apiKey) {
               setError(`API Key for ${apiConfig.provider} is not set. Please add one in API Settings.`);
               setShowApiSettings(true);
@@ -363,7 +378,7 @@ const App: React.FC = () => {
         return;
     }
 
-    const apiKey = keys[provider];
+    const apiKey = keys?.[provider];
     if (!apiKey) {
         setImageGenError(`API Key for ${provider} is not set. Please add one in API Settings.`);
         setShowApiSettings(true);
@@ -392,37 +407,58 @@ const App: React.FC = () => {
     }
   }, [apiConfig, advancedSettings.aspectRatio, supportsImageGeneration]);
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-gray-200 flex flex-col items-center p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-3xl mx-auto">
-        <Header />
-        <main className="mt-8 space-y-6 bg-gray-800 p-6 rounded-lg shadow-xl">
-          <Instructions
-            isOpen={showInstructions}
-            onToggle={() => setShowInstructions(prev => !prev)}
-          />
-          
-          <ApiSettings
-            isOpen={showApiSettings}
-            onToggle={() => setShowApiSettings(prev => !prev)}
-            config={apiConfig}
-            onChange={setApiConfig}
-          />
+  const handleAgeConfirm = () => {
+    try {
+        localStorage.setItem('ageVerified', 'true');
+    } catch (e) {
+        console.error("Failed to save age verification status", e);
+    }
+    setIsAgeVerified(true);
+  };
 
-          <div>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-                <div className="md:col-span-2">
-                  <ModelSelector selectedModel={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} />
-                </div>
-                <div>
-                  <VariationSelector value={numVariations} onChange={setNumVariations} />
-                </div>
-                <Toggle
-                  label="BREAK"
-                  checked={useBreak}
-                  onChange={setUseBreak}
-                  disabled={!currentModelConfig.supportsBreak}
-                  tooltip={`Use BREAK to separate prompt sections. Supported by certain models (e.g., SDXL).
+  const handleAgeDeny = () => {
+      window.open('https://www.cisa.gov/resources-tools/programs/cybersecurity-education-career-development/resources-grades-k-5', '_top');
+  };
+
+  return (
+    <>
+      <LogoAnimation show={showLogoAnimation} />
+
+      {!showLogoAnimation && !isAgeVerified && (
+        <AgeVerificationModal onConfirm={handleAgeConfirm} onDeny={handleAgeDeny} />
+      )}
+
+      <div className={`min-h-screen bg-gray-900 text-gray-200 flex flex-col items-center p-4 sm:p-6 lg:p-8 ${!showLogoAnimation && isAgeVerified ? 'animate-fade-in' : 'opacity-0'}`}>
+        {isAgeVerified && (
+          <div className="w-full max-w-3xl mx-auto">
+            <Header />
+            <main className="mt-8 space-y-6 bg-gray-800 p-6 rounded-lg shadow-xl">
+              <Instructions
+                isOpen={showInstructions}
+                onToggle={() => setShowInstructions(prev => !prev)}
+              />
+              
+              <ApiSettings
+                isOpen={showApiSettings}
+                onToggle={() => setShowApiSettings(prev => !prev)}
+                config={apiConfig}
+                onChange={setApiConfig}
+              />
+
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    <div className="md:col-span-2">
+                      <ModelSelector selectedModel={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} />
+                    </div>
+                    <div>
+                      <VariationSelector value={numVariations} onChange={setNumVariations} />
+                    </div>
+                    <Toggle
+                      label="BREAK"
+                      checked={useBreak}
+                      onChange={setUseBreak}
+                      disabled={!currentModelConfig.supportsBreak}
+                      tooltip={`Use BREAK to separate prompt sections. Supported by certain models (e.g., SDXL).
 
 Example structure:
 [score, quality]
@@ -436,107 +472,109 @@ BREAK
 [location]
 BREAK
 [style, quality settings]`}
-                />
-                <Toggle 
-                  label="Advanced" 
-                  checked={showAdvanced} 
-                  onChange={setShowAdvanced}
-                  tooltip="Show advanced settings like negative prompt, aspect ratio, and seed."
-                />
+                    />
+                    <Toggle 
+                      label="Advanced" 
+                      checked={showAdvanced} 
+                      onChange={setShowAdvanced}
+                      tooltip="Show advanced settings like negative prompt, aspect ratio, and seed."
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Supported Models: {MODEL_NAMES.join(', ')}
+                  </p>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Supported Models: {MODEL_NAMES.join(', ')}
-              </p>
+              
+              <StyleFilter selectedStyle={styleFilter} onChange={setStyleFilter} />
+              <CharacterControls settings={characterSettings} onChange={setCharacterSettings} />
+              <NsfwControls settings={nsfwSettings} onChange={setNsfwSettings} />
+              
+              <ShotPresets
+                onAppend={handleAppendToInput}
+                selectedPresets={selectedShotPresets}
+                onSelectedPresetsChange={setSelectedShotPresets}
+              />
+              <PosePresets
+                onAppend={handleAppendToInput}
+                selectedPresets={selectedPosePresets}
+                onSelectedPresetsChange={setSelectedPosePresets}
+              />
+              <LocationPresets
+                onAppend={handleAppendToInput}
+                selectedPresets={selectedLocationPresets}
+                onSelectedPresetsChange={setSelectedLocationPresets}
+              />
+              <ClothingPresets
+                onAppend={handleAppendToInput}
+                selectedPresets={selectedClothingPresets}
+                onSelectedPresetsChange={setSelectedClothingPresets}
+              />
+              
+              <PromptSnippets
+                snippets={snippets}
+                onAppend={handleAppendToInput}
+                onDelete={handleDeleteSnippet}
+              />
+
+              <AdvancedSettings 
+                isOpen={showAdvanced}
+                settings={advancedSettings}
+                onChange={setAdvancedSettings}
+              />
+
+              <PromptInput
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                onGenerate={handleGenerate}
+                onEnhance={handleEnhance}
+                onRandom={handleRandom}
+                isLoading={isLoading}
+                isEnhancing={isEnhancing}
+                isGeneratingRandom={isGeneratingRandom}
+                onSaveSnippet={handleInitiateSaveSnippet}
+              />
+              
+              {error && <p className="text-red-400 text-center">{error}</p>}
+
+              <PromptOutput 
+                prompts={generatedPrompts} 
+                isLoading={isLoading} 
+                selectedModel={selectedModel}
+                negativePrompt={advancedSettings.negativePrompt}
+                supportsImageGeneration={supportsImageGeneration}
+                onSendToGenerator={handleSendToGenerator}
+              />
+              
+              <ImageGenerator
+                isOpen={isImageGeneratorOpen}
+                onToggle={() => setIsImageGeneratorOpen(prev => !prev)}
+                prompt={promptForImageGen}
+                onPromptChange={setPromptForImageGen}
+                onGenerate={handleGenerateImage}
+                imageUrl={generatedImageUrl}
+                isLoading={isGeneratingImage}
+                error={imageGenError}
+                supportsImageGeneration={supportsImageGeneration}
+              />
+
+              <History
+                history={history}
+                onSelect={handleSelectFromHistory}
+                onClear={handleClearHistory}
+              />
+            </main>
+            
+            {snippetToSave && (
+              <SaveSnippetModal
+                content={snippetToSave.content}
+                onSave={handleConfirmSaveSnippet}
+                onCancel={handleCancelSaveSnippet}
+              />
+            )}
           </div>
-          
-          <StyleFilter selectedStyle={styleFilter} onChange={setStyleFilter} />
-          <CharacterControls settings={characterSettings} onChange={setCharacterSettings} />
-          <NsfwControls settings={nsfwSettings} onChange={setNsfwSettings} />
-          
-          <ShotPresets
-            onAppend={handleAppendToInput}
-            selectedPresets={selectedShotPresets}
-            onSelectedPresetsChange={setSelectedShotPresets}
-          />
-          <PosePresets
-            onAppend={handleAppendToInput}
-            selectedPresets={selectedPosePresets}
-            onSelectedPresetsChange={setSelectedPosePresets}
-          />
-          <LocationPresets
-            onAppend={handleAppendToInput}
-            selectedPresets={selectedLocationPresets}
-            onSelectedPresetsChange={setSelectedLocationPresets}
-          />
-          <ClothingPresets
-            onAppend={handleAppendToInput}
-            selectedPresets={selectedClothingPresets}
-            onSelectedPresetsChange={setSelectedClothingPresets}
-          />
-          
-          <PromptSnippets
-            snippets={snippets}
-            onAppend={handleAppendToInput}
-            onDelete={handleDeleteSnippet}
-          />
-
-          <AdvancedSettings 
-            isOpen={showAdvanced}
-            settings={advancedSettings}
-            onChange={setAdvancedSettings}
-          />
-
-          <PromptInput
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            onGenerate={handleGenerate}
-            onEnhance={handleEnhance}
-            onRandom={handleRandom}
-            isLoading={isLoading}
-            isEnhancing={isEnhancing}
-            isGeneratingRandom={isGeneratingRandom}
-            onSaveSnippet={handleInitiateSaveSnippet}
-          />
-          
-          {error && <p className="text-red-400 text-center">{error}</p>}
-
-          <PromptOutput 
-            prompts={generatedPrompts} 
-            isLoading={isLoading} 
-            selectedModel={selectedModel}
-            negativePrompt={advancedSettings.negativePrompt}
-            supportsImageGeneration={supportsImageGeneration}
-            onSendToGenerator={handleSendToGenerator}
-          />
-          
-          <ImageGenerator
-            isOpen={isImageGeneratorOpen}
-            onToggle={() => setIsImageGeneratorOpen(prev => !prev)}
-            prompt={promptForImageGen}
-            onPromptChange={setPromptForImageGen}
-            onGenerate={handleGenerateImage}
-            imageUrl={generatedImageUrl}
-            isLoading={isGeneratingImage}
-            error={imageGenError}
-            supportsImageGeneration={supportsImageGeneration}
-          />
-
-          <History
-            history={history}
-            onSelect={handleSelectFromHistory}
-            onClear={handleClearHistory}
-          />
-        </main>
-        
-        {snippetToSave && (
-          <SaveSnippetModal
-            content={snippetToSave.content}
-            onSave={handleConfirmSaveSnippet}
-            onCancel={handleCancelSaveSnippet}
-          />
         )}
       </div>
-    </div>
+    </>
   );
 };
 

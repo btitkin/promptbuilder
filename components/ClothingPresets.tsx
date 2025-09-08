@@ -73,15 +73,18 @@ export const ClothingPresets: React.FC<ClothingPresetsProps> = ({ onAppend, sele
   };
   
   const handlePresetClick = (preset: string) => {
+    const presetLower = preset.toLowerCase();
     if (isMultiSelect) {
       onSelectedPresetsChange(
-        selectedPresets.includes(preset) ? selectedPresets.filter(p => p !== preset) : [...selectedPresets, preset]
+        selectedPresets.includes(presetLower)
+          ? selectedPresets.filter(p => p !== presetLower)
+          : [...selectedPresets, presetLower]
       );
     } else {
-      onAppend(preset);
+      onAppend(preset); // Append original case
       // Also update selection for the Random button. Toggle selection on single-select mode.
-      const isCurrentlySelected = selectedPresets.length === 1 && selectedPresets[0] === preset;
-      onSelectedPresetsChange(isCurrentlySelected ? [] : [preset]);
+      const isCurrentlySelected = selectedPresets.length === 1 && selectedPresets[0] === presetLower;
+      onSelectedPresetsChange(isCurrentlySelected ? [] : [presetLower]);
     }
   };
   

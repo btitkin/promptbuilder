@@ -25,9 +25,19 @@ export const Instructions: React.FC<InstructionsProps> = ({ isOpen, onToggle }) 
                         <p>Welcome! This tool transforms your simple ideas into detailed, structured prompts optimized for various AI image and video models. Whether you're a beginner or an expert, this guide will help you get the most out of it.</p>
                     </div>
 
+                    <div className="space-y-2 p-3 bg-indigo-900/30 rounded-md border border-indigo-500/50">
+                        <h4 className="font-semibold text-base text-indigo-400">Initial Setup: Add Your API Key</h4>
+                        <p className="text-gray-400">
+                            This application requires an API key from a supported Large Language Model (LLM) provider (like Google Gemini) to work. Your keys are stored securely in your browser and are never shared.
+                            <br/>
+                            <strong>Please go to the "API Settings" section below and enter your key to begin.</strong>
+                        </p>
+                    </div>
+
                     <div className="space-y-2">
                         <h4 className="font-semibold text-base text-indigo-400">Quick Start Guide</h4>
                         <ol className="list-decimal list-inside space-y-1 text-gray-400">
+                            <li><strong className="text-gray-300">Set Your API Key:</strong> Expand the "API Settings" section and enter your API key for an LLM provider (e.g., Google Gemini). The app won't work without it!</li>
                             <li><strong className="text-gray-300">Describe Your Idea:</strong> Write a basic concept in the main text box (e.g., "a knight in a forest").</li>
                             <li><strong className="text-gray-300">Choose Your AI Model:</strong> Select the target AI model (e.g., SDXL, Google Imagen) from the dropdown. The tool will format the prompt correctly for that model.</li>
                             <li><strong className="text-gray-300">(Optional) Refine Your Vision:</strong> Use the "Style," "Character," and "Content Rules" sections to set high-level constraints.</li>
@@ -50,6 +60,11 @@ export const Instructions: React.FC<InstructionsProps> = ({ isOpen, onToggle }) 
                             <li><strong className="text-gray-300">Settings Accordions (Style, Character, etc.):</strong><br/>
                                 <span className="text-gray-400">
                                     These collapsible sections provide powerful, high-level controls. The AI will strictly follow these rules when generating prompts.
+                                </span>
+                            </li>
+                            <li><strong className="text-gray-300">Advanced Settings:</strong><br/>
+                                <span className="text-gray-400">
+                                    Use the "Advanced" toggle on the main screen to reveal settings for Negative Prompt, Aspect Ratio, Seed, and other custom parameters. These are applied automatically based on the selected model's syntax.
                                 </span>
                             </li>
                              <li><strong className="text-gray-300">Presets (Shot, Pose, etc.):</strong><br/>

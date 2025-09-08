@@ -27,12 +27,11 @@ export const PresetCategory: React.FC<PresetCategoryProps> = ({ title, presets, 
       {isOpen && (
         <div className="px-3 pb-3 flex flex-wrap gap-2 animate-fade-in">
           {presets.map(preset => {
-             const presetLower = preset.toLowerCase();
-             const isSelected = selectedPresets.includes(presetLower);
+             const isSelected = selectedPresets.includes(preset.toLowerCase());
              return (
                <button
                  key={preset}
-                 onClick={() => onPresetClick(presetLower)}
+                 onClick={() => onPresetClick(preset)}
                  className={`px-3 py-1 text-sm rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-gray-800 focus:ring-accent ${
                    isSelected
                      ? 'bg-accent text-white'
