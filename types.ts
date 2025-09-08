@@ -105,13 +105,20 @@ export type StyleFilter = {
   sub: RealisticStyle | AnimeStyle;
 };
 
-export type ApiProvider = 'google_gemini' | 'openai' | 'claude' | 'deepseek' | 'groq' | 'together' | 'perplexity' | 'cohere';
+export type ApiProvider = 'google_gemini' | 'openai' | 'claude' | 'deepseek' | 'groq' | 'together' | 'perplexity' | 'cohere' | 'custom_local';
+
+export interface CustomApiConfig {
+  url: string;
+  key: string;
+  model: string;
+}
 
 export interface ApiConfigState {
   provider: ApiProvider;
   keys: {
     [key in ApiProvider]?: string;
   };
+  customConfig?: CustomApiConfig;
 }
 
 export interface PromptSnippet {

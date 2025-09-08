@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ApiConfigState, ApiProvider } from '../types';
+import type { ApiConfigState, ApiProvider, CustomApiConfig } from '../types';
 import { InfoTooltip } from './InfoTooltip';
 import { ChevronDownIcon } from './icons';
 
@@ -16,6 +16,7 @@ interface ApiSettingsProps {
 const PROVIDERS = ([
     { id: 'claude', label: 'Anthropic (Claude)', docUrl: 'https://console.anthropic.com/settings/keys' },
     { id: 'cohere', label: 'Cohere', docUrl: 'https://dashboard.cohere.com/api-keys' },
+    { id: 'custom_local', label: 'Custom/Local API', docUrl: 'https://docs.mistral.ai/getting-started/quickstart/' },
     { id: 'deepseek', label: 'Deepseek', docUrl: 'https://platform.deepseek.com/api_keys' },
     { id: 'google_gemini', label: 'Google Gemini', docUrl: 'https://aistudio.google.com/app/apikey' },
     { id: 'groq', label: 'Groq', docUrl: 'https://console.groq.com/keys' },
@@ -36,6 +37,16 @@ export const ApiSettings: React.FC<ApiSettingsProps> = ({ isOpen, onToggle, conf
             ...config.keys,
             [config.provider]: key
         }
+    });
+  };
+
+  const handleCustomConfigChange = (field: keyof CustomApiConfig, value: string) => {
+    onChange({
+      ...config,
+      customConfig: {
+        ...config.customConfig,
+        [field]: value
+      } as CustomApiConfig
     });
   };
 
@@ -74,27 +85,88 @@ export const ApiSettings: React.FC<ApiSettingsProps> = ({ isOpen, onToggle, conf
             </select>
           </div>
           
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <label htmlFor="api-key" className="block text-sm font-medium text-gray-400">
-                API Key for {currentProviderInfo?.label}
-              </label>
-              <InfoTooltip text="The key used to authenticate with the selected AI provider." />
-            </div>
-            <input
-              type="password"
-              id="api-key"
-              className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent font-mono"
-              placeholder="Enter your API key here..."
-              value={config.keys[config.provider] || ''}
-              onChange={(e) => handleKeyChange(e.target.value)}
-            />
-            {currentProviderInfo && (
+          {config.provider === 'custom_local' ? (
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <label htmlFor="custom-url" className="block text-sm font-medium text-gray-400">
+                    API Base URL
+                  </label>
+                  <InfoTooltip text="The base URL of your local LLM API (e.g., http://localhost:11434 for Ollama)" />
+                </div>
+                <input
+                  type="text"
+                  id="custom-url"
+                  className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent font-mono"
+                  placeholder="http://localhost:11434"
+                  value={config.customConfig?.url || ''}
+                  onChange={(e) => handleCustomConfigChange('url', e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <label htmlFor="custom-model" className="block text-sm font-medium text-gray-400">
+                    Model Name
+                  </label>
+                  <InfoTooltip text="The name of the model to use (e.g., mistral, llama2, codellama)" />
+                </div>
+                <input
+                  type="text"
+                  id="custom-model"
+                  className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent font-mono"
+                  placeholder="mistral"
+                  value={config.customConfig?.model || ''}
+                  onChange={(e) => handleCustomConfigChange('model', e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <label htmlFor="custom-key" className="block text-sm font-medium text-gray-400">
+                    API Key (Optional)
+                  </label>
+                  <InfoTooltip text="API key if your local server requires authentication" />
+                </div>
+                <input
+                  type="password"
+                  id="custom-key"
+                  className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent font-mono"
+                  placeholder="Optional API key..."
+                  value={config.customConfig?.key || ''}
+                  onChange={(e) => handleCustomConfigChange('key', e.target.value)}
+                />
+              </div>
+              
+              {currentProviderInfo && (
                 <a href={currentProviderInfo.docUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-indigo-400 hover:underline">
-                    How to get a {currentProviderInfo.label} API key?
+                  How to set up local LLM with Ollama/Mistral?
                 </a>
-            )}
-          </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <label htmlFor="api-key" className="block text-sm font-medium text-gray-400">
+                  API Key for {currentProviderInfo?.label}
+                </label>
+                <InfoTooltip text="The key used to authenticate with the selected AI provider." />
+              </div>
+              <input
+                type="password"
+                id="api-key"
+                className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent font-mono"
+                placeholder="Enter your API key here..."
+                value={config.keys[config.provider] || ''}
+                onChange={(e) => handleKeyChange(e.target.value)}
+              />
+              {currentProviderInfo && (
+                  <a href={currentProviderInfo.docUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-indigo-400 hover:underline">
+                      How to get a {currentProviderInfo.label} API key?
+                  </a>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,0 +1,36 @@
+directories:
+  output: release
+  buildResources: build
+appId: com.btitkin.promptbuilder
+productName: Prompt Builder
+files:
+  - filter:
+      - dist/**/*
+      - electron/**/*
+      - logo.svg
+      - package.json
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+electronVersion: 38.0.0
