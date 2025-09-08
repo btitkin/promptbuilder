@@ -21,7 +21,6 @@ Prompt Builder is an advanced tool designed for AI art enthusiasts, developers, 
 
 **This desktop version features local LLM integration, enabling you to connect local AI models (Ollama, Mistral, etc.) for complete offline operation and enhanced privacy. Your data never leaves your computer when using local models.**
 
-**[➡️ Live Demo Placeholder](https://your-live-demo-url.com)**
 
 
 
