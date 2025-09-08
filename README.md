@@ -27,6 +27,8 @@ Prompt Builder is an advanced tool designed for AI art enthusiasts, developers, 
 
 *   **🧠 Intelligent Prompt Generation:** Utilizes a powerful LLM (via your API key) to expand simple descriptions into multiple detailed prompt variations.
 *   **🤖 Model-Specific Optimization:** Automatically formats prompts for a wide range of popular AI models, including tag-based (Stable Diffusion), natural language (Google Imagen), MidJourney, and video models.
+*   **🖥️ Desktop Application:** Native Windows desktop app with Electron for quick access without browser overhead.
+*   **🏠 Local LLM Support:** Connect to local AI models (Ollama, Mistral, etc.) for complete privacy and offline usage.
 *   **🔧 Advanced Controls:** Fine-tune every aspect with settings for negative prompts, aspect ratios, seeds, and custom parameters.
 *   **🎨 High-Level Directives:** Use intuitive controls for Style (Realistic/Anime), Character attributes (age, gender, ethnicity, etc.), and Content Rules (SFW/NSFW).
 *   **⚡️ Workflow Accelerators:**
@@ -55,6 +57,88 @@ You'll need an API key from a supported Language Model (LLM) provider. This appl
 4.  **Choose Your Target Model:** Select the image/video generation AI model you will be using (e.g., `SDXL`, `Google Imagen4`).
 5.  **Generate:** Click the **Generate Prompt** button and see the results!
 
+## 🖥️ Windows Desktop Application
+
+### Download & Installation
+
+**Portable Version (Recommended):**
+1. Download the latest release from the [Releases](https://github.com/btitkin/promptbuilder/releases) page
+2. Extract the ZIP file to your desired location
+3. Navigate to the `portable-app` folder
+4. Double-click `start.bat` to launch the application
+
+**No installation required!** The portable version includes everything needed to run.
+
+### Building from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/btitkin/promptbuilder.git
+cd promptbuilder
+
+# Switch to the local LLM branch
+git checkout local_llm_version
+
+# Install dependencies
+npm install
+
+# Build for Electron
+$env:ELECTRON='true'; npm run build
+
+# Run the desktop app
+npm run electron
+
+# Or build executable
+npm run dist
+```
+
+## 🏠 Local LLM Integration
+
+### Supported Local Models
+
+- **Ollama** (Recommended)
+- **Mistral** 
+- **LM Studio**
+- **Any OpenAI-compatible API**
+
+### Setup Instructions
+
+#### Using Ollama
+
+1. **Install Ollama:** Download from [ollama.ai](https://ollama.ai)
+2. **Pull a model:**
+   ```bash
+   ollama pull mistral
+   # or
+   ollama pull llama2
+   ```
+3. **Start Ollama server:**
+   ```bash
+   ollama serve
+   ```
+4. **Configure in Prompt Builder:**
+   - Open API Settings
+   - Select "Custom/Local API"
+   - Set API Base URL: `http://localhost:11434`
+   - Set Model Name: `mistral` (or your chosen model)
+   - Leave API Key empty (optional for local)
+
+#### Using Other Local APIs
+
+1. **Start your local LLM server** (ensure it's OpenAI-compatible)
+2. **Configure in Prompt Builder:**
+   - API Base URL: Your server URL (e.g., `http://localhost:1234`)
+   - Model Name: Your model identifier
+   - API Key: If required by your setup
+
+### Benefits of Local LLMs
+
+- **🔒 Complete Privacy:** Your data never leaves your computer
+- **⚡ No Rate Limits:** Generate as many prompts as you want
+- **💰 Cost-Free:** No API costs after initial setup
+- **🌐 Offline Usage:** Works without internet connection
+- **🎛️ Full Control:** Choose your preferred model and settings
+
 ## 🤖 Supported Models
 
 Prompt Builder can generate optimized prompts for the following models:
@@ -74,7 +158,12 @@ Prompt Builder can generate optimized prompts for the following models:
 *   **Framework:** React 19
 *   **Language:** TypeScript
 *   **Styling:** Tailwind CSS
-*   **AI Integration:** Google Gemini API via `@google/genai`
+*   **Desktop:** Electron (Windows/Mac/Linux)
+*   **AI Integration:** 
+    *   Google Gemini API via `@google/genai`
+    *   Custom/Local LLM support (Ollama, Mistral, etc.)
+    *   OpenAI-compatible API endpoints
+*   **Build Tools:** Vite, electron-builder
 
 ## 🤝 Contributing
 
