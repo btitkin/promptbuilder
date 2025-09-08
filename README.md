@@ -19,9 +19,9 @@
 
 Prompt Builder is an advanced tool designed for AI art enthusiasts, developers, and prompt engineers. It bridges the gap between a simple idea and a high-quality, perfectly formatted prompt, saving you time and maximizing the potential of generative AI models. The application intelligently manages complex syntax, model-specific parameters, and content rules, allowing you to focus on creativity.
 
-**[💻 DESKTOP VERSION - USE WITH YOUR LOCAL LLM! ](https://github.com/btitkin/promptbuilder/tree/local_llm_version)[💻]**
+**[💻 DESKTOP VERSION - USE WITH YOUR LOCAL LLM! ](https://github.com/btitkin/promptbuilder/tree/local_llm_version)💻**
 
-**[▶️ You can try the PromptBuilder now here, enjoy it! ](https://btitkin.github.io/promptbuilder/)[◀️]**
+**[▶️ You can try the PromptBuilder now here, enjoy it! ](https://btitkin.github.io/promptbuilder/)◀️**
 
 
 
