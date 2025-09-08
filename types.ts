@@ -1,5 +1,6 @@
 
 
+
 export interface ModelConfig {
   name: string;
   supportsBreak: boolean;
@@ -117,4 +118,21 @@ export interface PromptSnippet {
   id: string;
   name: string;
   content: string;
+}
+
+export interface AppSettings {
+  version: number;
+  userInput: string;
+  selectedModel: string;
+  styleFilter: StyleFilter;
+  characterSettings: CharacterSettingsState;
+  nsfwSettings: NsfwSettingsState;
+  useBreak: boolean;
+  advancedSettings: AdvancedSettingsState;
+  numVariations: number;
+  snippets: PromptSnippet[];
+  selectedShotPresets: string[];
+  selectedPosePresets: string[];
+  selectedLocationPresets: string[];
+  selectedClothingPresets: string[];
 }

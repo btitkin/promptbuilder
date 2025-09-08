@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ModelSelector } from './components/ModelSelector';
@@ -12,6 +13,7 @@ import { VariationSelector } from './components/VariationSelector';
 import { NsfwControls } from './components/NsfwControls';
 import { StyleFilter } from './components/StyleFilter';
 import { ApiSettings } from './components/ApiSettings';
+import { SettingsManager } from './components/SettingsManager';
 import { CharacterControls } from './components/CharacterControls';
 import { ShotPresets } from './components/ShotPresets';
 import { PosePresets } from './components/PosePresets';
@@ -24,7 +26,7 @@ import { Instructions } from './components/Instructions';
 import { LogoAnimation } from './components/LogoAnimation';
 import { AgeVerificationModal } from './components/AgeVerificationModal';
 import { MODEL_NAMES, MODELS } from './constants';
-import type { StructuredPrompt, AdvancedSettingsState, NsfwSettingsState, StyleFilter as StyleFilterType, ApiConfigState, CharacterSettingsState, PromptSnippet } from './types';
+import type { AppSettings, StructuredPrompt, AdvancedSettingsState, NsfwSettingsState, StyleFilter as StyleFilterType, ApiConfigState, CharacterSettingsState, PromptSnippet } from './types';
 import * as aiService from './services/aiService';
 
 const getQualityTagsForStyle = (styleFilter: StyleFilterType): string[] => {
@@ -420,6 +422,82 @@ const App: React.FC = () => {
       window.open('https://www.cisa.gov/resources-tools/programs/cybersecurity-education-career-development/resources-grades-k-5', '_top');
   };
 
+  const handleExportSettings = useCallback(() => {
+    const settingsToSave: AppSettings = {
+      version: 1,
+      userInput,
+      selectedModel,
+      styleFilter,
+      characterSettings,
+      nsfwSettings,
+      useBreak,
+      advancedSettings,
+      numVariations,
+      snippets,
+      selectedShotPresets,
+      selectedPosePresets,
+      selectedLocationPresets,
+      selectedClothingPresets,
+    };
+
+    const blob = new Blob([JSON.stringify(settingsToSave, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `prompt-builder-settings-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [
+    userInput, selectedModel, styleFilter, characterSettings, nsfwSettings, 
+    useBreak, advancedSettings, numVariations, snippets, selectedShotPresets, 
+    selectedPosePresets, selectedLocationPresets, selectedClothingPresets
+  ]);
+
+  const handleImportSettings = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result;
+        if (typeof text !== 'string') {
+          throw new Error("File could not be read.");
+        }
+        const settings: AppSettings = JSON.parse(text);
+
+        if (settings.version !== 1 || !settings.selectedModel) {
+            throw new Error("Invalid or incompatible settings file.");
+        }
+
+        setUserInput(settings.userInput ?? 'A young woman laughing.');
+        if (MODEL_NAMES.includes(settings.selectedModel)) {
+          setSelectedModel(settings.selectedModel);
+        }
+        setStyleFilter(settings.styleFilter ?? { main: 'realistic', sub: 'amateur' });
+        setCharacterSettings(settings.characterSettings ?? { gender: 'any', age: 'any', bodyType: 'any', ethnicity: 'any', height: 'any', breastSize: 'any', hipsSize: 'any', buttSize: 'any', penisSize: 'any', muscleDefinition: 'any', facialHair: 'any' });
+        setNsfwSettings(settings.nsfwSettings ?? { mode: 'off', nsfwLevel: 5, hardcoreLevel: 5, enhancePerson: true, enhancePose: true, enhanceLocation: true, aiImagination: false });
+        setUseBreak(settings.useBreak ?? false);
+        setAdvancedSettings(settings.advancedSettings ?? { negativePrompt: 'ugly, blurry', aspectRatio: '1:1', additionalParams: '', seed: '' });
+        setNumVariations(settings.numVariations ?? 1);
+        setSnippets(settings.snippets ?? []);
+        setSelectedShotPresets(settings.selectedShotPresets ?? []);
+        setSelectedPosePresets(settings.selectedPosePresets ?? []);
+        setSelectedLocationPresets(settings.selectedLocationPresets ?? []);
+        setSelectedClothingPresets(settings.selectedClothingPresets ?? []);
+        
+        setError(null); // Clear previous errors
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : 'Failed to parse settings file.';
+        setError(`Import failed: ${errorMessage}`);
+      }
+    };
+    reader.onerror = () => {
+      setError("Failed to read the settings file.");
+    };
+    reader.readAsText(file);
+  }, []);
+
+
   return (
     <>
       <LogoAnimation show={showLogoAnimation} />
@@ -443,6 +521,11 @@ const App: React.FC = () => {
                 onToggle={() => setShowApiSettings(prev => !prev)}
                 config={apiConfig}
                 onChange={setApiConfig}
+              />
+
+              <SettingsManager
+                onExport={handleExportSettings}
+                onImport={handleImportSettings}
               />
 
               <div>
