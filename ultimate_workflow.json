@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "description": "A beautiful anime girl with long flowing hair",
+      "description": "A beautiful anime character",
       "api_url": "http://127.0.0.1:1234",
       "model_name": "mistral",
       "target_model": "Illustrious",
@@ -18,65 +18,37 @@
       "quality_tags": true,
       "use_break": true,
       "enable_batch": true,
-      "batch_count": 5,
+      "batch_count": 10,
       "full_randomize_batch": false,
       "random_locations": true,
       "random_poses": true,
       "random_emotions": true,
       "random_clothing": true,
-      "random_lighting": false,
-      "preserved_traits": "long flowing hair, gentle smile, green eyes",
-      "shot_presets": "portrait, close-up",
-      "pose_presets": "standing, sitting",
-      "location_presets": "garden, library, cafe",
-      "clothing_presets": "casual, elegant"
+      "random_lighting": true,
+      "preserved_traits": "beautiful eyes, gentle smile",
+      "shot_presets": "portrait, close-up, dynamic",
+      "pose_presets": "standing, sitting, action",
+      "location_presets": "garden, library, battlefield, cafe",
+      "clothing_presets": "casual, elegant, armor"
     },
     "class_type": "PromptBuilderLocalNode",
     "_meta": {
-      "title": "🎌 Main Prompt Generator (Ghibli Style)"
+      "title": "🎌 Anime Generator (All Styles)"
     }
   },
   "2": {
     "inputs": {
-      "description": "A powerful warrior in battle stance",
-      "api_url": "http://127.0.0.1:1234",
-      "model_name": "mistral",
-      "target_model": "Illustrious",
-      "style_main": "anime",
-      "style_sub": "professional",
-      "anime_style": "attack_on_titan",
-      "num_variations": 2,
-      "gender": "male",
-      "age_range": "30s",
-      "ethnicity": "any",
-      "body_type": "muscular",
-      "nsfw_mode": "off",
-      "quality_tags": true,
-      "use_break": true,
-      "enable_batch": false,
-      "shot_presets": "dynamic, action",
-      "pose_presets": "fighting, heroic",
-      "location_presets": "battlefield, fortress",
-      "clothing_presets": "armor, military"
-    },
-    "class_type": "PromptBuilderLocalNode",
-    "_meta": {
-      "title": "⚔️ Action Generator (Attack on Titan Style)"
-    }
-  },
-  "3": {
-    "inputs": {
       "quick_preset": "portrait_woman",
-      "description": "A mysterious woman with silver hair",
+      "description": "A professional portrait",
       "api_url": "http://127.0.0.1:1234",
       "model_name": "mistral",
       "target_model": "SDXL",
       "batch_mode": "fixed_character",
-      "batch_count": 10,
+      "batch_count": 5,
       "nsfw_mode": "off",
       "nsfw_ratio": 0.0,
       "enable_random_generation": true,
-      "random_intensity": 0.7,
+      "random_intensity": 0.6,
       "variation_mode": "fixed_character",
       "preserve_character": true,
       "randomize_location": true,
@@ -87,10 +59,10 @@
     },
     "class_type": "PromptBuilderQuickNode",
     "_meta": {
-      "title": "⚡ Quick Batch Generator (Realistic Style)"
+      "title": "📸 Realistic Generator"
     }
   },
-  "4": {
+  "3": {
     "inputs": {
       "positive_prompt": [
         "1",
@@ -118,24 +90,24 @@
     },
     "class_type": "PromptDisplayNode",
     "_meta": {
-      "title": "📊 Ghibli Results Display"
+      "title": "📊 Anime Results"
     }
   },
-  "5": {
+  "4": {
     "inputs": {
-      "positive_prompt": [
+      "batch_positive": [
         "2",
         0
       ],
-      "negative_prompt": [
+      "batch_negative": [
         "2",
         1
       ],
-      "enhanced_description": [
+      "batch_enhanced": [
         "2",
         2
       ],
-      "formatted_prompt": [
+      "batch_formatted": [
         "2",
         3
       ],
@@ -145,45 +117,14 @@
       ],
       "display_mode": "formatted_only",
       "add_separators": false,
-      "show_stats": false
-    },
-    "class_type": "PromptDisplayNode",
-    "_meta": {
-      "title": "📊 Action Results Display"
-    }
-  },
-  "6": {
-    "inputs": {
-      "batch_positive": [
-        "3",
-        0
-      ],
-      "batch_negative": [
-        "3",
-        1
-      ],
-      "batch_enhanced": [
-        "3",
-        2
-      ],
-      "batch_formatted": [
-        "3",
-        3
-      ],
-      "batch_info": [
-        "3",
-        4
-      ],
-      "display_mode": "all",
-      "add_separators": true,
       "show_stats": true
     },
     "class_type": "PromptDisplayNode",
     "_meta": {
-      "title": "📊 Quick Batch Results Display"
+      "title": "📊 Realistic Results"
     }
   },
-  "7": {
+  "5": {
     "inputs": {
       "positive_prompt": [
         "1",
@@ -208,25 +149,25 @@
     },
     "class_type": "PromptSelectorNode",
     "_meta": {
-      "title": "🎯 Select Best Ghibli Prompt"
+      "title": "🎯 Select Anime Prompt"
     }
   },
-  "8": {
+  "6": {
     "inputs": {
       "batch_positive": [
-        "3",
+        "2",
         0
       ],
       "batch_negative": [
-        "3",
+        "2",
         1
       ],
       "batch_enhanced": [
-        "3",
+        "2",
         2
       ],
       "batch_formatted": [
-        "3",
+        "2",
         3
       ],
       "output_selection": "positive",
@@ -236,114 +177,103 @@
     },
     "class_type": "PromptSelectorNode",
     "_meta": {
-      "title": "🎯 Select Best Realistic Prompt"
+      "title": "🎯 Select Realistic Prompt"
     }
   },
-  "9": {
+  "7": {
     "inputs": {
       "ckpt_name": "illustriousXL_v01.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
-      "title": "📁 Load Illustrious Model"
+      "title": "📁 Illustrious Model"
     }
   },
-  "10": {
+  "8": {
     "inputs": {
       "ckpt_name": "sdxl_base_1.0.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
-      "title": "📁 Load SDXL Model"
+      "title": "📁 SDXL Model"
+    }
+  },
+  "9": {
+    "inputs": {
+      "text": [
+        "5",
+        0
+      ],
+      "clip": [
+        "7",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "✅ Anime Positive"
+    }
+  },
+  "10": {
+    "inputs": {
+      "text": [
+        "5",
+        1
+      ],
+      "clip": [
+        "7",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "❌ Anime Negative"
     }
   },
   "11": {
     "inputs": {
       "text": [
-        "7",
+        "6",
         0
       ],
       "clip": [
-        "9",
+        "8",
         1
       ]
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
-      "title": "✅ CLIP Positive (Anime)"
+      "title": "✅ Realistic Positive"
     }
   },
   "12": {
     "inputs": {
       "text": [
-        "7",
+        "6",
         1
       ],
       "clip": [
-        "9",
+        "8",
         1
       ]
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
-      "title": "❌ CLIP Negative (Anime)"
+      "title": "❌ Realistic Negative"
     }
   },
   "13": {
     "inputs": {
-      "text": [
-        "8",
-        0
-      ],
-      "clip": [
-        "10",
-        1
-      ]
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
     },
-    "class_type": "CLIPTextEncode",
+    "class_type": "EmptyLatentImage",
     "_meta": {
-      "title": "✅ CLIP Positive (Realistic)"
+      "title": "🖼️ Latent Image"
     }
   },
   "14": {
-    "inputs": {
-      "text": [
-        "8",
-        1
-      ],
-      "clip": [
-        "10",
-        1
-      ]
-    },
-    "class_type": "CLIPTextEncode",
-    "_meta": {
-      "title": "❌ CLIP Negative (Realistic)"
-    }
-  },
-  "15": {
-    "inputs": {
-      "width": 1024,
-      "height": 1024,
-      "batch_size": 1
-    },
-    "class_type": "EmptyLatentImage",
-    "_meta": {
-      "title": "🖼️ Empty Latent (Anime)"
-    }
-  },
-  "16": {
-    "inputs": {
-      "width": 1024,
-      "height": 1024,
-      "batch_size": 1
-    },
-    "class_type": "EmptyLatentImage",
-    "_meta": {
-      "title": "🖼️ Empty Latent (Realistic)"
-    }
-  },
-  "17": {
     "inputs": {
       "seed": 42,
       "steps": 28,
@@ -352,7 +282,37 @@
       "scheduler": "karras",
       "denoise": 1.0,
       "model": [
+        "7",
+        0
+      ],
+      "positive": [
         "9",
+        0
+      ],
+      "negative": [
+        "10",
+        0
+      ],
+      "latent_image": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "🎨 Generate Anime"
+    }
+  },
+  "15": {
+    "inputs": {
+      "seed": 123,
+      "steps": 30,
+      "cfg": 8.0,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 1.0,
+      "model": [
+        "8",
         0
       ],
       "positive": [
@@ -364,127 +324,71 @@
         0
       ],
       "latent_image": [
-        "15",
+        "13",
         0
       ]
     },
     "class_type": "KSampler",
     "_meta": {
-      "title": "🎨 Generate Anime Image (Ghibli)"
+      "title": "🎨 Generate Realistic"
+    }
+  },
+  "16": {
+    "inputs": {
+      "samples": [
+        "14",
+        0
+      ],
+      "vae": [
+        "7",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "🔄 Decode Anime"
+    }
+  },
+  "17": {
+    "inputs": {
+      "samples": [
+        "15",
+        0
+      ],
+      "vae": [
+        "8",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "🔄 Decode Realistic"
     }
   },
   "18": {
     "inputs": {
-      "seed": 123,
-      "steps": 30,
-      "cfg": 8.0,
-      "sampler_name": "euler_ancestral",
-      "scheduler": "normal",
-      "denoise": 1.0,
-      "model": [
-        "10",
-        0
-      ],
-      "positive": [
-        "13",
-        0
-      ],
-      "negative": [
-        "14",
-        0
-      ],
-      "latent_image": [
+      "filename_prefix": "Anime_",
+      "images": [
         "16",
         0
       ]
     },
-    "class_type": "KSampler",
+    "class_type": "SaveImage",
     "_meta": {
-      "title": "🎨 Generate Realistic Image"
+      "title": "💾 Save Anime"
     }
   },
   "19": {
     "inputs": {
-      "samples": [
+      "filename_prefix": "Realistic_",
+      "images": [
         "17",
         0
-      ],
-      "vae": [
-        "9",
-        2
-      ]
-    },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "🔄 VAE Decode (Anime)"
-    }
-  },
-  "20": {
-    "inputs": {
-      "samples": [
-        "18",
-        0
-      ],
-      "vae": [
-        "10",
-        2
-      ]
-    },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "🔄 VAE Decode (Realistic)"
-    }
-  },
-  "21": {
-    "inputs": {
-      "filename_prefix": "AnimeGhibli_",
-      "images": [
-        "19",
-        0
       ]
     },
     "class_type": "SaveImage",
     "_meta": {
-      "title": "💾 Save Anime Image"
-    }
-  },
-  "22": {
-    "inputs": {
-      "filename_prefix": "RealisticPortrait_",
-      "images": [
-        "20",
-        0
-      ]
-    },
-    "class_type": "SaveImage",
-    "_meta": {
-      "title": "💾 Save Realistic Image"
-    }
-  },
-  "23": {
-    "inputs": {
-      "text": [
-        "4",
-        0
-      ],
-      "title": "🎌 GHIBLI STYLE RESULTS"
-    },
-    "class_type": "ShowTextNode",
-    "_meta": {
-      "title": "📄 Show Ghibli Stats"
-    }
-  },
-  "24": {
-    "inputs": {
-      "text": [
-        "6",
-        0
-      ],
-      "title": "⚡ QUICK BATCH RESULTS"
-    },
-    "class_type": "ShowTextNode",
-    "_meta": {
-      "title": "📄 Show Batch Stats"
+      "title": "💾 Save Realistic"
     }
   }
 }
