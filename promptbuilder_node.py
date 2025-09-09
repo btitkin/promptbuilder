@@ -34,6 +34,12 @@ class PromptBuilderLocalNode:
                 "style_sub": (["professional", "amateur", "flash", "ghibli", "naruto", "bleach"], {
                     "default": "professional"
                 }),
+                
+                # Anime Styles (only visible when style_main = "anime")
+                "anime_style": (["ghibli", "naruto", "bleach", "one_piece", "attack_on_titan", "demon_slayer", "your_name", "spirited_away", "princess_mononoke", "akira", "ghost_in_shell", "cowboy_bebop", "evangelion", "sailor_moon", "dragon_ball", "pokemon", "jojo", "death_note", "fullmetal_alchemist", "my_hero_academia"], {
+                    "default": "ghibli",
+                    "tooltip": "Specific anime art style (only available when Anime is selected)"
+                }),
                 "num_variations": ("INT", {
                     "default": 3,
                     "min": 1,
@@ -483,10 +489,40 @@ class PromptBuilderLocalNode:
         """
         Create comprehensive system prompt for LLM
         """
+        # Get anime style if anime is selected
+        anime_style = kwargs.get('anime_style', 'ghibli') if style_main == 'anime' else None
+        
         style_guidance = {
             "realistic": "Focus on photorealistic, detailed descriptions. Include lighting, composition, and technical photography terms.",
-            "anime": "Focus on anime and manga style descriptions. Include character design elements and anime-specific terminology."
+            "anime": f"Focus on anime and manga style descriptions. Use {anime_style} anime art style specifically. Include character design elements and anime-specific terminology."
         }
+        
+        # Enhanced anime style guidance
+        anime_style_details = {
+            "ghibli": "Studio Ghibli style - soft, detailed, magical atmosphere, beautiful landscapes, expressive characters",
+            "naruto": "Naruto anime style - dynamic action poses, ninja themes, vibrant colors, spiky hair designs",
+            "bleach": "Bleach anime style - sharp character designs, dramatic lighting, gothic elements, spiritual themes",
+            "one_piece": "One Piece anime style - exaggerated proportions, colorful characters, adventure themes, unique character designs",
+            "attack_on_titan": "Attack on Titan style - dark atmosphere, detailed military gear, intense expressions, apocalyptic themes",
+            "demon_slayer": "Demon Slayer style - traditional Japanese elements, flowing water/fire effects, detailed sword techniques",
+            "your_name": "Your Name anime style - realistic anime, beautiful lighting, emotional expressions, modern settings",
+            "spirited_away": "Spirited Away style - magical creatures, detailed fantasy worlds, soft color palettes",
+            "princess_mononoke": "Princess Mononoke style - nature themes, forest spirits, detailed environmental art",
+            "akira": "Akira anime style - cyberpunk aesthetic, detailed mechanical designs, neon colors, futuristic themes",
+            "ghost_in_shell": "Ghost in the Shell style - cyberpunk, detailed technology, philosophical themes, futuristic cityscapes",
+            "cowboy_bebop": "Cowboy Bebop style - space western, jazz age aesthetic, detailed spacecraft, noir atmosphere",
+            "evangelion": "Evangelion style - mecha designs, psychological themes, religious symbolism, detailed mechanical art",
+            "sailor_moon": "Sailor Moon style - magical girl aesthetic, sparkles and ribbons, cute character designs, pastel colors",
+            "dragon_ball": "Dragon Ball style - muscular characters, energy auras, dynamic fighting poses, spiky hair",
+            "pokemon": "Pokemon anime style - cute creatures, bright colors, adventure themes, friendly character designs",
+            "jojo": "JoJo's Bizarre Adventure style - dramatic poses, detailed clothing, unique character designs, flamboyant style",
+            "death_note": "Death Note style - dark gothic aesthetic, detailed character expressions, psychological thriller themes",
+            "fullmetal_alchemist": "Fullmetal Alchemist style - detailed alchemy symbols, steampunk elements, emotional character designs",
+            "my_hero_academia": "My Hero Academia style - superhero themes, dynamic action, colorful costumes, expressive characters"
+        }
+        
+        if anime_style and anime_style in anime_style_details:
+            style_guidance["anime"] += f" Specifically: {anime_style_details[anime_style]}"
         
         nsfw_guidance = ""
         if nsfw_mode == "nsfw":
@@ -799,6 +835,13 @@ class PromptBuilderOnlineNode:
                 "style_sub": (["professional", "amateur", "flash", "ghibli", "naruto", "bleach"], {
                     "default": "professional"
                 }),
+                
+                # Anime Styles (only visible when style_main = "anime")
+                "anime_style": (["ghibli", "naruto", "bleach", "one_piece", "attack_on_titan", "demon_slayer", "your_name", "spirited_away", "princess_mononoke", "akira", "ghost_in_shell", "cowboy_bebop", "evangelion", "sailor_moon", "dragon_ball", "pokemon", "jojo", "death_note", "fullmetal_alchemist", "my_hero_academia"], {
+                    "default": "ghibli",
+                    "tooltip": "Specific anime art style (only available when Anime is selected)"
+                }),
+                
                 "num_variations": ("INT", {
                     "default": 3,
                     "min": 1,
