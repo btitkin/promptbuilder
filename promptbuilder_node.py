@@ -236,6 +236,14 @@ class PromptBuilderLocalNode:
         """
         Make API call to local LLM
         """
+        # Validate API URL
+        api_url = config.get('api_url', '').strip()
+        if not api_url:
+            raise Exception("API URL is empty. Please provide a valid local LLM API URL.")
+        
+        if not api_url.startswith(('http://', 'https://')):
+            raise Exception(f"Invalid API URL format: {api_url}. Must start with http:// or https://")
+        
         headers = {'Content-Type': 'application/json'}
         
         if config.get('api_key'):
@@ -250,7 +258,7 @@ class PromptBuilderLocalNode:
         
         try:
             response = self.session.post(
-                f"{config['api_url']}/v1/chat/completions",
+                f"{api_url}/v1/chat/completions",
                 headers=headers,
                 json=payload,
                 timeout=60
@@ -258,10 +266,22 @@ class PromptBuilderLocalNode:
             
             if response.status_code == 200:
                 data = response.json()
+                if 'choices' not in data or not data['choices']:
+                    raise Exception("Invalid API response: missing 'choices' field")
                 return data['choices'][0]['message']['content']
+            elif response.status_code == 404:
+                raise Exception(f"API endpoint not found. Check if LLM server is running on {api_url}")
+            elif response.status_code == 401:
+                raise Exception("Authentication failed. Check API key if required.")
+            elif response.status_code == 500:
+                raise Exception("LLM server internal error. Check server logs.")
             else:
                 raise Exception(f"API Error: {response.status_code} - {response.text}")
                 
+        except requests.exceptions.ConnectionError:
+            raise Exception(f"Cannot connect to LLM server at {api_url}. Check if server is running.")
+        except requests.exceptions.Timeout:
+            raise Exception(f"LLM server timeout. Server at {api_url} is not responding.")
         except requests.exceptions.RequestException as e:
             raise Exception(f"Connection Error: {str(e)}")
     
@@ -443,9 +463,11 @@ Return a JSON object with:
             return (positive_prompt, negative_prompt, enhanced_description, formatted_prompt)
             
         except Exception as e:
-            error_msg = f"Error generating prompts: {str(e)}"
+            error_msg = f"❌ LLM API Error: {str(e)}"
             print(f"PromptBuilder Local Node Error: {error_msg}")
-            return (description, 'blurry, low quality, distorted', error_msg, description)
+            # Return clear error messages instead of fallback to description
+            error_prompt = f"❌ ERROR: Local LLM not responding. Check API URL and model. Original: {description}"
+            return (error_prompt, 'blurry, low quality, distorted', error_msg, error_prompt)
     
     def format_for_model(self, prompt: str, target_model: str, kwargs: Dict[str, Any]) -> str:
         """
@@ -818,9 +840,11 @@ class PromptBuilderOnlineNode:
             return (positive_prompt, negative_prompt, enhanced_description, formatted_prompt)
             
         except Exception as e:
-            error_msg = f"Error generating prompts: {str(e)}"
+            error_msg = f"❌ Online LLM API Error: {str(e)}"
             print(f"PromptBuilder Online Node Error: {error_msg}")
-            return (description, 'blurry, low quality, distorted', error_msg, description)
+            # Return clear error messages instead of fallback to description
+            error_prompt = f"❌ ERROR: Online LLM API failed. Check API key and provider. Original: {description}"
+            return (error_prompt, 'blurry, low quality, distorted', error_msg, error_prompt)
 
 class PromptDisplayNode:
     """
