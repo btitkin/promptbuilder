@@ -1,173 +1,330 @@
-# ComfyUI Prompt Builder Node
+# ComfyUI Prompt Builder Nodes - Advanced Edition
 
-Integracja Prompt Builder z ComfyUI umożliwiająca generowanie zaawansowanych promptów przy użyciu lokalnych modeli LLM.
+A comprehensive ComfyUI integration for Prompt Builder featuring **two powerful nodes** with the complete feature set from the main application.
 
-## 🚀 Funkcje
+## 🚀 Features
 
-- **Lokalne LLM** - Obsługa lokalnych modeli AI (Ollama, Mistral, LM Studio)
-- **Generowanie promptów** - Automatyczne tworzenie szczegółowych promptów pozytywnych i negatywnych
-- **Style** - Wsparcie dla różnych stylów: photorealistic, anime, artistic
-- **Konfigurowalność** - Pełna kontrola nad parametrami generowania
-- **Offline** - Działa całkowicie offline z lokalnymi modelami
+### **🔥 Four Powerful Nodes:**
+- **Prompt Builder (Local LLM)** - Works with local AI models (Ollama, LM Studio, etc.)
+- **Prompt Builder (Online LLM)** - Supports major online APIs (OpenAI, Claude, Gemini, etc.)
+- **Prompt Display & Stats** - Shows generated prompts in readable format with statistics
+- **Prompt Selector & Customizer** - Choose and customize specific prompt outputs
 
-## 📦 Instalacja
+### **💎 Complete Feature Set:**
+- **Full Model Support** - SDXL, Pony, Flux, Illustrious, NoobAI, MidJourney, and more
+- **Advanced Character Controls** - Gender, age, body type, ethnicity, and detailed attributes
+- **NSFW Support** - Three modes: Off, NSFW, Hardcore with granular controls
+- **Style System** - Realistic (Professional/Amateur/Flash) and Anime (Ghibli/Naruto/Bleach)
+- **Preset System** - Shot, Pose, Location, and Clothing presets
+- **Quality Tags** - Automatic model-specific quality enhancement
+- **BREAK Support** - Smart token insertion for compatible models
+- **Model-Specific Formatting** - Optimized output for each target model
 
-### 1. Przez ComfyUI Manager (Zalecane)
+## 📦 Installation
 
+### 1. Via ComfyUI Manager (Recommended)
 
-### 2. Instalacja manualna
+1. Open ComfyUI
+2. Click "Manager" in the menu
+3. Select "Install Custom Nodes"
+4. Paste URL: `https://github.com/btitkin/promptbuilder.git`
+5. Select branch: `comfyui-node`
+6. Click "Install"
+7. Restart ComfyUI
 
-1. Przejdź do folderu `ComfyUI/custom_nodes/`
-2. Sklonuj repozytorium:
+### 2. Manual Installation
+
+1. Navigate to `ComfyUI/custom_nodes/` folder
+2. Clone the repository:
    ```bash
-   git clone https://github.com/btitkin/promptbuilder.git comfyui-promptbuilder-node
+   git clone -b comfyui-node https://github.com/btitkin/promptbuilder.git comfyui-promptbuilder-node
    ```
-3. Zainstaluj zależności:
+3. Install dependencies:
    ```bash
    cd comfyui-promptbuilder-node
    pip install -r requirements.txt
    ```
-4. Zrestartuj ComfyUI
+4. Restart ComfyUI
 
-## 🔧 Konfiguracja lokalnego LLM
+## 🔧 Local LLM Setup
 
 ### Ollama
 ```bash
-# Instalacja Ollama
+# Install Ollama
 curl -fsSL https://ollama.ai/install.sh | sh
 
-# Pobranie modelu
+# Download model
 ollama pull mistral
 
-# Uruchomienie serwera
+# Start server
 ollama serve
 ```
 
 ### LM Studio
-1. Pobierz i zainstaluj LM Studio
-2. Pobierz model (np. Mistral 7B)
-3. Uruchom lokalny serwer na porcie 1234
+1. Download and install LM Studio
+2. Download a model (e.g., Mistral 7B)
+3. Start local server on port 1234
 
-### Inne kompatybilne API
-Wszystkie API kompatybilne z OpenAI (LocalAI, text-generation-webui, itp.)
+### Other Compatible APIs
+Any OpenAI-compatible API (LocalAI, text-generation-webui, etc.)
 
-## 🎯 Użytkowanie
+## 🎯 Usage
 
-### Podstawowe użycie
+### **🔧 Node Selection**
 
-1. **Dodaj node** - W ComfyUI dodaj node "Prompt Builder (Local LLM)"
-2. **Konfiguruj połączenie:**
-   - **API URL**: `http://127.0.0.1:1234` (dla LM Studio)
-   - **Model Name**: `mistral` lub nazwa twojego modelu
-3. **Wprowadź opis**: "A beautiful sunset over mountains"
-4. **Wybierz styl**: photorealistic/anime/artistic
-5. **Uruchom** - Node wygeneruje enhanced prompty
+**Choose the right node for your setup:**
+- **Prompt Builder (Local LLM)** - For Ollama, LM Studio, or other local APIs
+- **Prompt Builder (Online LLM)** - For OpenAI, Claude, Gemini, and other cloud APIs
 
-### Parametry wejściowe
+### **⚡ Quick Start**
 
-| Parametr | Typ | Domyślna | Opis |
-|----------|-----|----------|------|
-| `description` | STRING | "A beautiful sunset..." | Podstawowy opis sceny |
-| `api_url` | STRING | "http://127.0.0.1:1234" | URL lokalnego API LLM |
-| `model_name` | STRING | "dolphin-2.7-mixtral-8x7b" | Nazwa modelu |
-| `style_filter` | CHOICE | "photorealistic" | Styl: photorealistic/anime/artistic |
-| `num_variations` | INT | 3 | Liczba wariantów (1-10) |
-| `api_key` | STRING | "" | Klucz API (opcjonalny) |
-| `temperature` | FLOAT | 0.7 | Kreatywność (0.1-2.0) |
-| `max_tokens` | INT | 2000 | Maksymalna długość odpowiedzi |
+#### **Local LLM Node:**
+1. Add "Prompt Builder (Local LLM)" to your workflow
+2. Configure:
+   - **API URL**: `http://127.0.0.1:1234` (LM Studio) or `http://127.0.0.1:11434` (Ollama)
+   - **Model Name**: Your local model (e.g., `mistral`, `llama2`)
+   - **Target Model**: Choose your image generation model (SDXL, Pony, etc.)
+3. Set description and run!
 
-### Wyjścia
+#### **Online LLM Node:**
+1. Add "Prompt Builder (Online LLM)" to your workflow
+2. Configure:
+   - **API Provider**: Choose from OpenAI, Claude, Gemini, etc.
+   - **API Key**: Your provider's API key
+   - **Target Model**: Choose your image generation model
+3. Set description and run!
 
-- **positive_prompt** - Szczegółowy prompt pozytywny
-- **negative_prompt** - Prompt negatywny (elementy do unikania)
-- **enhanced_description** - Rozszerzony opis sceny
+### **🎨 Advanced Configuration**
 
-## 🔗 Przykładowy workflow
+#### **Core Parameters**
+| Parameter | Type | Options | Description |
+|-----------|------|---------|-------------|
+| `description` | STRING | - | Your creative prompt |
+| `target_model` | CHOICE | SDXL, Pony, Flux, etc. | Target image generation model |
+| `style_main` | CHOICE | realistic, anime | Main style category |
+| `style_sub` | CHOICE | professional, amateur, flash, ghibli, etc. | Sub-style refinement |
+| `num_variations` | INT | 1-10 | Number of prompt variations |
+
+#### **🔞 NSFW Controls**
+| Parameter | Type | Options | Description |
+|-----------|------|---------|-------------|
+| `nsfw_mode` | CHOICE | off, nsfw, hardcore | Content rating level |
+| `nsfw_level` | INT | 1-10 | NSFW intensity |
+| `hardcore_level` | INT | 1-10 | Hardcore content intensity |
+| `enhance_person` | BOOLEAN | - | Enhance character descriptions |
+| `enhance_pose` | BOOLEAN | - | Enhance pose descriptions |
+| `enhance_location` | BOOLEAN | - | Enhance location descriptions |
+| `ai_imagination` | BOOLEAN | - | Allow AI creative additions |
+
+#### **👤 Character Settings**
+| Parameter | Type | Options | Description |
+|-----------|------|---------|-------------|
+| `gender` | CHOICE | any, male, female, mixed | Character gender |
+| `age_range` | CHOICE | any, 18s, 25s, 30s, 40s, 50s, 60s, 70+ | Age range |
+| `body_type` | CHOICE | any, slim, curvy, athletic, etc. | Body type |
+| `ethnicity` | CHOICE | any, caucasian, asian, african, etc. | Ethnicity |
+| `height_range` | CHOICE | any, short, average, tall, etc. | Height range |
+
+#### **🚺 Female-Specific**
+- `breast_size`: any, flat, small, medium, large, huge, gigantic
+- `hips_size`: any, narrow, average, wide, extra wide
+- `butt_size`: any, flat, small, average, large, bubble
+
+#### **🚹 Male-Specific**
+- `penis_size`: any, small, average, large, huge, horse-hung
+- `muscle_definition`: any, soft, toned, defined, ripped, bodybuilder
+- `facial_hair`: any, clean-shaven, stubble, goatee, mustache, full beard
+
+#### **🎬 Preset System**
+| Parameter | Type | Examples | Description |
+|-----------|------|----------|-------------|
+| `shot_presets` | STRING | "close-up, portrait" | Camera shot types |
+| `pose_presets` | STRING | "standing, confident" | Character poses |
+| `location_presets` | STRING | "studio, outdoor" | Scene locations |
+| `clothing_presets` | STRING | "casual, elegant" | Clothing styles |
+
+### **📤 Outputs**
+
+- **positive_prompt** - Enhanced positive prompt with quality tags
+- **negative_prompt** - Negative prompt (elements to avoid)
+- **enhanced_description** - AI-enhanced scene description
+- **formatted_prompt** - Model-specific formatted prompt (NEW!)
+
+### **👁️ Prompt Display & Stats Node**
+
+Perfect for visualizing AI-generated results!
+
+#### **Features:**
+- **Visual Display** - Shows all prompts in organized, readable format
+- **Statistics** - Word count, character count for each prompt type
+- **Multiple Modes** - Display all, positive only, negative only, or formatted only
+- **Clean Outputs** - Provides clean prompts ready for CLIP Text Encode
+
+#### **Parameters:**
+| Parameter | Type | Options | Description |
+|-----------|------|---------|-------------|
+| `display_mode` | CHOICE | all, positive_only, negative_only, formatted_only | What to display |
+| `add_separators` | BOOLEAN | - | Add section separators for clarity |
+| `show_stats` | BOOLEAN | - | Show word/character statistics |
+
+#### **Outputs:**
+- **display_text** - Formatted display of all prompts with stats
+- **positive_for_clip** - Clean positive prompt for CLIP Text Encode
+- **negative_for_clip** - Clean negative prompt for CLIP Text Encode
+
+### **🎯 Prompt Selector & Customizer Node**
+
+Choose and customize the perfect prompt for your needs!
+
+#### **Features:**
+- **Smart Selection** - Choose between positive, formatted, or enhanced prompts
+- **Custom Additions** - Add custom prefix and suffix text
+- **Quality Tag Control** - Remove quality tags if needed
+- **Clean Output** - Properly formatted for CLIP Text Encode
+
+#### **Parameters:**
+| Parameter | Type | Options | Description |
+|-----------|------|---------|-------------|
+| `output_selection` | CHOICE | positive, formatted, enhanced | Which prompt to use |
+| `custom_prefix` | STRING | - | Text to add at the beginning |
+| `custom_suffix` | STRING | - | Text to add at the end |
+| `remove_quality_tags` | BOOLEAN | - | Remove quality tags from output |
+
+#### **Outputs:**
+- **selected_positive** - Customized positive prompt ready for CLIP
+- **selected_negative** - Negative prompt (unchanged)
+
+## 🔗 Example Workflows
+
+### **🎨 Complete Workflow with Display & Selection**
 
 ```
-[Prompt Builder Node] → [CLIP Text Encode] → [KSampler] → [VAE Decode] → [Save Image]
-                    ↘ [CLIP Text Encode (Negative)]
+[Prompt Builder Local] → [Prompt Display] → [Prompt Selector] → [CLIP Text Encode] → [KSampler SDXL]
+                      ↘ [Show Stats & Results]              ↘ [CLIP Text Encode (Neg)]
+
+[Prompt Builder Online] → [Prompt Display] → [Prompt Selector] → [CLIP Text Encode] → [KSampler Illustrious]
+                       ↘ [Show Stats & Results]              ↘ [CLIP Text Encode (Neg)]
 ```
 
-## ⚙️ Konfiguracja zaawansowana
+### **👁️ Visual Workflow Benefits**
 
-### Różne modele LLM
+```
+Prompt Builder → Prompt Display Node:
+├── 📊 Shows all 4 outputs with statistics
+├── 📝 Readable format with separators
+├── 🔢 Word/character counts
+└── 👀 User can see exactly what AI generated
+
+Prompt Display → Prompt Selector Node:
+├── 🎯 Choose best prompt (positive/formatted/enhanced)
+├── ✏️ Add custom prefix/suffix
+├── 🏷️ Remove quality tags if needed
+└── 🔗 Clean output ready for CLIP Text Encode
+```
+
+### **🔥 Advanced Features Showcase**
+
+```
+Prompt Builder (Local LLM):
+├── Description: "A majestic dragon flying over a medieval castle"
+├── Target Model: SDXL
+├── Style: Realistic → Professional
+├── Shot Presets: "wide shot, cinematic"
+├── Location Presets: "castle, medieval"
+├── Quality Tags: Enabled
+├── BREAK Support: Enabled
+└── Outputs: Enhanced prompts optimized for SDXL
+
+Prompt Builder (Online LLM):
+├── Description: "A beautiful anime girl in a magical forest"
+├── API Provider: OpenAI GPT-4
+├── Target Model: Illustrious
+├── Style: Anime → Ghibli
+├── Character: Female, 25s, Japanese
+├── Pose Presets: "standing, graceful"
+├── Clothing Presets: "fantasy, elegant"
+└── Outputs: Enhanced prompts optimized for Illustrious
+```
+
+## ⚙️ Advanced Configuration
+
+### Different LLM Models
 
 **Ollama:**
 - URL: `http://127.0.0.1:11434`
-- Modele: `mistral`, `llama2`, `codellama`
+- Models: `mistral`, `llama2`, `codellama`
 
 **LM Studio:**
 - URL: `http://127.0.0.1:1234`
-- Modele: Dowolny załadowany model
+- Models: Any loaded model
 
 **text-generation-webui:**
 - URL: `http://127.0.0.1:5000`
-- Tryb: OpenAI API compatibility
+- Mode: OpenAI API compatibility
 
-### Optymalizacja promptów
+### Prompt Optimization
 
 **Photorealistic:**
-- Dodaje terminy fotograficzne
-- Skupia się na oświetleniu i kompozycji
-- Zawiera szczegóły techniczne
+- Adds photography terms
+- Focuses on lighting and composition
+- Includes technical details
 
 **Anime:**
-- Używa terminologii anime/manga
-- Dodaje elementy stylu artystycznego
-- Zawiera referencje do designu postaci
+- Uses anime/manga terminology
+- Adds artistic style elements
+- Includes character design references
 
 **Artistic:**
-- Skupia się na ruchach artystycznych
-- Dodaje techniki malarskie
-- Zawiera elementy estetyczne
+- Focuses on art movements
+- Adds painting techniques
+- Includes aesthetic elements
 
-## 🐛 Rozwiązywanie problemów
+## 🐛 Troubleshooting
 
 ### "Connection Error"
-- Sprawdź czy lokalny LLM jest uruchomiony
-- Zweryfikuj URL API (http://127.0.0.1:1234)
-- Sprawdź czy port nie jest zablokowany
+- Check if local LLM is running
+- Verify API URL (http://127.0.0.1:1234)
+- Check if port is not blocked
 
 ### "API Error 404"
-- Sprawdź czy model jest załadowany
-- Zweryfikuj nazwę modelu
-- Sprawdź czy API endpoint jest poprawny
+- Check if model is loaded
+- Verify model name
+- Check if API endpoint is correct
 
 ### "Timeout Error"
-- Zwiększ timeout w kodzie node
-- Sprawdź wydajność systemu
-- Rozważ mniejszy model LLM
+- Increase timeout in node code
+- Check system performance
+- Consider smaller LLM model
 
-### CORS Issues (dla aplikacji webowych)
-- Użyj aplikacji desktop (Electron)
-- Skonfiguruj proxy w serwerze deweloperskim
-- Uruchom LLM z obsługą CORS
+### CORS Issues (for web applications)
+- Use desktop application (Electron)
+- Configure proxy in development server
+- Run LLM with CORS support
 
-## 📋 Wymagania systemowe
+## 📋 System Requirements
 
-- **ComfyUI** - Najnowsza wersja
+- **ComfyUI** - Latest version
 - **Python** - 3.8+
-- **RAM** - Min. 8GB (16GB zalecane dla większych modeli)
-- **GPU** - Opcjonalne (dla przyspieszenia LLM)
-- **Lokalny LLM** - Ollama/LM Studio/inne
+- **RAM** - Min. 8GB (16GB recommended for larger models)
+- **GPU** - Optional (for LLM acceleration)
+- **Local LLM** - Ollama/LM Studio/other
 
-## 🤝 Wsparcie
+## 🤝 Support
 
 - **Issues**: [GitHub Issues](https://github.com/btitkin/promptbuilder/issues)
-- **Dokumentacja**: [Wiki](https://github.com/btitkin/promptbuilder/wiki)
-- **Dyskusje**: [GitHub Discussions](https://github.com/btitkin/promptbuilder/discussions)
+- **Documentation**: [Wiki](https://github.com/btitkin/promptbuilder/wiki)
+- **Discussions**: [GitHub Discussions](https://github.com/btitkin/promptbuilder/discussions)
 
-## 📄 Licencja
+## 📄 License
 
-MIT License - Zobacz [LICENSE](LICENSE) dla szczegółów.
+MIT License - See [LICENSE](LICENSE) for details.
 
-## 🙏 Podziękowania
+## 🙏 Acknowledgments
 
-- ComfyUI team za fantastyczną platformę
-- Społeczność AI za wsparcie i feedback
-- Twórcy lokalnych modeli LLM
+- ComfyUI team for the amazing platform
+- AI community for support and feedback
+- Local LLM model creators
 
 ---
 
-**Prompt Builder ComfyUI Node** - Generuj lepsze prompty z mocą lokalnych LLM! 🚀
+**Prompt Builder ComfyUI Node** - Generate better prompts with the power of local LLMs! 🚀
