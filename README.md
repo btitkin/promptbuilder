@@ -16,12 +16,19 @@
 ## 🚀 Choose Your Version
 
 ### 📱 **Standalone Web Application** (Main Branch)
-> Perfect for direct use, testing, and development
+> Perfect for direct use, privacy-focused local processing, and development
 
-- **🌐 Web Interface** - Beautiful, intuitive UI
-- **⚡ Real-time Generation** - Instant prompt creation
-- **🔧 Development Mode** - Full source code access
-- **📊 Analytics** - Built-in prompt analysis
+- **🌐 Beautiful Web Interface** - Modern, responsive React-based UI
+- **🔒 Complete Privacy** - All processing happens locally on your machine
+- **🧠 Local LLM Integration** - Works with Ollama, LM Studio, Text Generation WebUI
+- **⚡ Real-time Generation** - Instant prompt creation and live preview
+- **🎨 Advanced Character Builder** - Detailed customization with live preview
+- **🎌 20+ Anime Styles** - From Studio Ghibli to modern anime
+- **🔄 Intelligent Batch Processing** - Generate 1-100 prompts with smart randomization
+- **💾 History & Favorites** - Save and manage your best prompts
+- **🔧 Developer Ready** - Full TypeScript/React source code
+- **📊 Built-in Analytics** - Prompt analysis and optimization suggestions
+- **🚀 Multiple Deployment Options** - Web app, Electron desktop, or Docker
 
 **[📥 Download Standalone App](https://github.com/btitkin/promptbuilder/archive/refs/heads/main.zip)**
 
@@ -121,16 +128,37 @@ pip install -r requirements.txt
 
 ## 📱 Standalone Web Application
 
-### **🌟 Features:**
-- **Beautiful Web Interface** - Modern, responsive design
-- **Real-time Generation** - Instant prompt creation and preview
-- **Advanced Settings** - Full control over all parameters
-- **History & Favorites** - Save and manage your best prompts
-- **Export Options** - Multiple format support
-- **Development Ready** - Full TypeScript/React source code
+### **🌟 Key Features:**
 
-### **🚀 Quick Start (Standalone):**
+#### **🔒 Privacy-First Design:**
+- **100% Local Processing** - No data sent to external servers
+- **Offline Capable** - Works without internet connection
+- **Your Data Stays Yours** - Complete control over your prompts and settings
 
+#### **🧠 Advanced Local LLM Integration:**
+- **Ollama Support** - Direct integration with Ollama models
+- **LM Studio Compatible** - Works with LM Studio's OpenAI API
+- **Text Generation WebUI** - Supports oobabooga's text-generation-webui
+- **Custom APIs** - Any OpenAI-compatible local API
+- **Model Flexibility** - Use any model size that fits your hardware
+
+#### **🎨 Professional Prompt Engineering:**
+- **Smart Character Builder** - Detailed physical and personality traits
+- **Style System** - Realistic photography + 20+ anime art styles
+- **Quality Enhancement** - Automatic model-specific optimization
+- **Batch Generation** - Create 1-100 variations with intelligent randomization
+- **Preset Library** - Pre-built combinations for common scenarios
+
+#### **💻 Developer Experience:**
+- **Modern Tech Stack** - React 18, TypeScript, Vite
+- **Component Library** - Reusable UI components
+- **API Abstraction** - Easy to add new LLM providers
+- **Hot Reload** - Instant development feedback
+- **Build Optimization** - Production-ready builds
+
+### **🚀 Quick Start Guide:**
+
+#### **Step 1: Clone and Install**
 ```bash
 # Clone the main branch
 git clone https://github.com/btitkin/promptbuilder.git
@@ -138,19 +166,107 @@ cd promptbuilder
 
 # Install dependencies
 npm install
-
-# Start development server
-npm run dev
-
-# Or build for production
-npm run build
 ```
 
+#### **Step 2: Setup Local LLM (Choose One)**
+
+**Option A: Ollama (Recommended)**
+```bash
+# Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Download a model
+ollama pull mistral
+# or
+ollama pull llama2
+
+# Start Ollama (runs on http://localhost:11434)
+ollama serve
+```
+
+**Option B: LM Studio**
+1. Download and install [LM Studio](https://lmstudio.ai/)
+2. Download a model (e.g., Mistral 7B, Llama 2 7B)
+3. Start local server (runs on http://localhost:1234)
+
+**Option C: Text Generation WebUI**
+```bash
+# Clone and setup text-generation-webui
+git clone https://github.com/oobabooga/text-generation-webui
+cd text-generation-webui
+# Follow their installation guide
+# Start with --api flag for API access
+```
+
+#### **Step 3: Start the Application**
+```bash
+# Development mode (with hot reload)
+npm run dev
+
+# Production build
+npm run build
+npm run preview
+```
+
+#### **Step 4: Configure LLM Connection**
+1. Open the app in your browser
+2. Go to Settings → API Configuration
+3. Set your LLM endpoint:
+   - **Ollama**: `http://localhost:11434`
+   - **LM Studio**: `http://localhost:1234`
+   - **Text Gen WebUI**: `http://localhost:5000`
+4. Select your model name
+5. Test connection and start generating!
+
 ### **📦 Deployment Options:**
-- **Local Development** - `npm run dev`
-- **Static Build** - `npm run build`
-- **Electron App** - Desktop application
-- **Docker** - Containerized deployment
+
+#### **🖥️ Desktop Application (Electron)**
+```bash
+# Build desktop app
+npm run electron:build
+
+# Development with Electron
+npm run electron:dev
+```
+
+#### **🐳 Docker Deployment**
+```bash
+# Build Docker image
+docker build -t promptbuilder .
+
+# Run container
+docker run -p 3000:3000 promptbuilder
+```
+
+#### **☁️ Static Hosting**
+```bash
+# Build for static hosting
+npm run build
+
+# Deploy to Netlify, Vercel, GitHub Pages, etc.
+# Upload the 'dist' folder
+```
+
+### **🔧 Configuration Options:**
+
+#### **Environment Variables:**
+```bash
+# .env file
+VITE_DEFAULT_API_URL=http://localhost:11434
+VITE_DEFAULT_MODEL=mistral
+VITE_ENABLE_ANALYTICS=false
+VITE_THEME=dark
+```
+
+#### **Custom API Providers:**
+```typescript
+// Add custom LLM provider in src/services/
+export const customApiService = {
+  generatePrompt: async (config, prompt) => {
+    // Your custom API logic
+  }
+}
+```
 
 ## 🎯 Example Use Cases
 
