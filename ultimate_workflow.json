@@ -1,0 +1,394 @@
+{
+  "1": {
+    "inputs": {
+      "description": "A beautiful anime character",
+      "api_url": "http://127.0.0.1:1234",
+      "model_name": "mistral",
+      "target_model": "Illustrious",
+      "style_main": "anime",
+      "style_sub": "professional",
+      "anime_style": "ghibli",
+      "num_variations": 3,
+      "gender": "female",
+      "age_range": "25s",
+      "ethnicity": "japanese",
+      "body_type": "slim",
+      "breast_size": "medium",
+      "nsfw_mode": "off",
+      "quality_tags": true,
+      "use_break": true,
+      "enable_batch": true,
+      "batch_count": 10,
+      "full_randomize_batch": false,
+      "random_locations": true,
+      "random_poses": true,
+      "random_emotions": true,
+      "random_clothing": true,
+      "random_lighting": true,
+      "preserved_traits": "beautiful eyes, gentle smile",
+      "shot_presets": "portrait, close-up, dynamic",
+      "pose_presets": "standing, sitting, action",
+      "location_presets": "garden, library, battlefield, cafe",
+      "clothing_presets": "casual, elegant, armor"
+    },
+    "class_type": "PromptBuilderLocalNode",
+    "_meta": {
+      "title": "🎌 Anime Generator (All Styles)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "quick_preset": "portrait_woman",
+      "description": "A professional portrait",
+      "api_url": "http://127.0.0.1:1234",
+      "model_name": "mistral",
+      "target_model": "SDXL",
+      "batch_mode": "fixed_character",
+      "batch_count": 5,
+      "nsfw_mode": "off",
+      "nsfw_ratio": 0.0,
+      "enable_random_generation": true,
+      "random_intensity": 0.6,
+      "variation_mode": "fixed_character",
+      "preserve_character": true,
+      "randomize_location": true,
+      "randomize_pose": true,
+      "randomize_clothing": true,
+      "randomize_emotion": false,
+      "randomize_lighting": true
+    },
+    "class_type": "PromptBuilderQuickNode",
+    "_meta": {
+      "title": "📸 Realistic Generator"
+    }
+  },
+  "3": {
+    "inputs": {
+      "positive_prompt": [
+        "1",
+        0
+      ],
+      "negative_prompt": [
+        "1",
+        1
+      ],
+      "enhanced_description": [
+        "1",
+        2
+      ],
+      "formatted_prompt": [
+        "1",
+        3
+      ],
+      "batch_info": [
+        "1",
+        4
+      ],
+      "display_mode": "all",
+      "add_separators": true,
+      "show_stats": true
+    },
+    "class_type": "PromptDisplayNode",
+    "_meta": {
+      "title": "📊 Anime Results"
+    }
+  },
+  "4": {
+    "inputs": {
+      "batch_positive": [
+        "2",
+        0
+      ],
+      "batch_negative": [
+        "2",
+        1
+      ],
+      "batch_enhanced": [
+        "2",
+        2
+      ],
+      "batch_formatted": [
+        "2",
+        3
+      ],
+      "batch_info": [
+        "2",
+        4
+      ],
+      "display_mode": "formatted_only",
+      "add_separators": false,
+      "show_stats": true
+    },
+    "class_type": "PromptDisplayNode",
+    "_meta": {
+      "title": "📊 Realistic Results"
+    }
+  },
+  "5": {
+    "inputs": {
+      "positive_prompt": [
+        "1",
+        0
+      ],
+      "negative_prompt": [
+        "1",
+        1
+      ],
+      "enhanced_description": [
+        "1",
+        2
+      ],
+      "formatted_prompt": [
+        "1",
+        3
+      ],
+      "output_selection": "formatted",
+      "custom_prefix": "masterpiece, best quality, ",
+      "custom_suffix": ", highly detailed, 8k",
+      "remove_quality_tags": false
+    },
+    "class_type": "PromptSelectorNode",
+    "_meta": {
+      "title": "🎯 Select Anime Prompt"
+    }
+  },
+  "6": {
+    "inputs": {
+      "batch_positive": [
+        "2",
+        0
+      ],
+      "batch_negative": [
+        "2",
+        1
+      ],
+      "batch_enhanced": [
+        "2",
+        2
+      ],
+      "batch_formatted": [
+        "2",
+        3
+      ],
+      "output_selection": "positive",
+      "custom_prefix": "professional photography, ",
+      "custom_suffix": ", studio lighting",
+      "remove_quality_tags": false
+    },
+    "class_type": "PromptSelectorNode",
+    "_meta": {
+      "title": "🎯 Select Realistic Prompt"
+    }
+  },
+  "7": {
+    "inputs": {
+      "ckpt_name": "illustriousXL_v01.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "📁 Illustrious Model"
+    }
+  },
+  "8": {
+    "inputs": {
+      "ckpt_name": "sdxl_base_1.0.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "📁 SDXL Model"
+    }
+  },
+  "9": {
+    "inputs": {
+      "text": [
+        "5",
+        0
+      ],
+      "clip": [
+        "7",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "✅ Anime Positive"
+    }
+  },
+  "10": {
+    "inputs": {
+      "text": [
+        "5",
+        1
+      ],
+      "clip": [
+        "7",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "❌ Anime Negative"
+    }
+  },
+  "11": {
+    "inputs": {
+      "text": [
+        "6",
+        0
+      ],
+      "clip": [
+        "8",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "✅ Realistic Positive"
+    }
+  },
+  "12": {
+    "inputs": {
+      "text": [
+        "6",
+        1
+      ],
+      "clip": [
+        "8",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "❌ Realistic Negative"
+    }
+  },
+  "13": {
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "🖼️ Latent Image"
+    }
+  },
+  "14": {
+    "inputs": {
+      "seed": 42,
+      "steps": 28,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": [
+        "7",
+        0
+      ],
+      "positive": [
+        "9",
+        0
+      ],
+      "negative": [
+        "10",
+        0
+      ],
+      "latent_image": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "🎨 Generate Anime"
+    }
+  },
+  "15": {
+    "inputs": {
+      "seed": 123,
+      "steps": 30,
+      "cfg": 8.0,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 1.0,
+      "model": [
+        "8",
+        0
+      ],
+      "positive": [
+        "11",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "🎨 Generate Realistic"
+    }
+  },
+  "16": {
+    "inputs": {
+      "samples": [
+        "14",
+        0
+      ],
+      "vae": [
+        "7",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "🔄 Decode Anime"
+    }
+  },
+  "17": {
+    "inputs": {
+      "samples": [
+        "15",
+        0
+      ],
+      "vae": [
+        "8",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "🔄 Decode Realistic"
+    }
+  },
+  "18": {
+    "inputs": {
+      "filename_prefix": "Anime_",
+      "images": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "💾 Save Anime"
+    }
+  },
+  "19": {
+    "inputs": {
+      "filename_prefix": "Realistic_",
+      "images": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "💾 Save Realistic"
+    }
+  }
+}
