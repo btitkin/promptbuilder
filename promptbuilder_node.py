@@ -90,8 +90,23 @@ class PromptBuilderLocalNode:
                 }),
                 
                 # Character Settings
-                "gender": (["any", "male", "female", "mixed"], {
+                "gender": (["any", "male", "female", "mixed", "random"], {
                     "default": "any"
+                }),
+                "random_seed": ("INT", {
+                    "default": -1,
+                    "min": -1,
+                    "max": 999999,
+                    "step": 1
+                }),
+                "enable_random_generation": ("BOOLEAN", {
+                    "default": False
+                }),
+                "random_intensity": ("FLOAT", {
+                    "default": 0.5,
+                    "min": 0.1,
+                    "max": 1.0,
+                    "step": 0.1
                 }),
                 "age_range": (["any", "18s", "25s", "30s", "40s", "50s", "60s", "70+"], {
                     "default": "any"
@@ -304,43 +319,99 @@ class PromptBuilderLocalNode:
     
     def build_character_description(self, **kwargs) -> str:
         """
-        Build character description from settings
+        Build character description from settings with random support
         """
         parts = []
         
+        # Set up random seed if provided
+        random_seed = kwargs.get('random_seed', -1)
+        if random_seed != -1:
+            random.seed(random_seed)
+        
+        # Handle random gender selection
+        gender = kwargs.get('gender', 'any')
+        if gender == 'random':
+            gender = random.choice(['male', 'female'])
+        
         # Basic demographics
-        if kwargs.get('gender') and kwargs['gender'] != 'any':
-            parts.append(kwargs['gender'])
+        if gender and gender != 'any':
+            parts.append(gender)
         
-        if kwargs.get('age_range') and kwargs['age_range'] != 'any':
-            parts.append(f"{kwargs['age_range']} years old")
+        # Random age if enabled
+        age_range = kwargs.get('age_range', 'any')
+        if kwargs.get('enable_random_generation') and age_range == 'any':
+            age_range = random.choice(['18s', '25s', '30s', '40s', '50s'])
         
-        if kwargs.get('ethnicity') and kwargs['ethnicity'] != 'any':
-            parts.append(kwargs['ethnicity'])
+        if age_range and age_range != 'any':
+            parts.append(f"{age_range} years old")
         
-        # Physical attributes
-        if kwargs.get('body_type') and kwargs['body_type'] != 'any':
-            parts.append(f"{kwargs['body_type']} body type")
+        # Random ethnicity if enabled
+        ethnicity = kwargs.get('ethnicity', 'any')
+        if kwargs.get('enable_random_generation') and ethnicity == 'any':
+            ethnicity_options = ['caucasian', 'european', 'asian', 'japanese', 'chinese', 'korean', 'african', 'hispanic']
+            ethnicity = random.choice(ethnicity_options)
         
-        if kwargs.get('height_range') and kwargs['height_range'] != 'any':
-            parts.append(kwargs['height_range'])
+        if ethnicity and ethnicity != 'any':
+            parts.append(ethnicity)
         
-        # Gender-specific attributes
-        if kwargs.get('gender') == 'female':
-            if kwargs.get('breast_size') and kwargs['breast_size'] != 'any':
-                parts.append(f"{kwargs['breast_size']} breasts")
-            if kwargs.get('hips_size') and kwargs['hips_size'] != 'any':
-                parts.append(f"{kwargs['hips_size']} hips")
-            if kwargs.get('butt_size') and kwargs['butt_size'] != 'any':
-                parts.append(f"{kwargs['butt_size']} butt")
+        # Random body type if enabled
+        body_type = kwargs.get('body_type', 'any')
+        if kwargs.get('enable_random_generation') and body_type == 'any':
+            if gender == 'female':
+                body_type = random.choice(['slim', 'curvy', 'athletic', 'instagram model'])
+            elif gender == 'male':
+                body_type = random.choice(['slim', 'muscular', 'athletic', 'big muscular'])
         
-        if kwargs.get('gender') == 'male':
-            if kwargs.get('muscle_definition') and kwargs['muscle_definition'] != 'any':
-                parts.append(f"{kwargs['muscle_definition']} muscles")
-            if kwargs.get('facial_hair') and kwargs['facial_hair'] != 'any':
-                parts.append(kwargs['facial_hair'])
-            if kwargs.get('penis_size') and kwargs['penis_size'] != 'any' and kwargs.get('nsfw_mode') != 'off':
-                parts.append(f"{kwargs['penis_size']} penis")
+        if body_type and body_type != 'any':
+            parts.append(f"{body_type} body type")
+        
+        # Random height if enabled
+        height_range = kwargs.get('height_range', 'any')
+        if kwargs.get('enable_random_generation') and height_range == 'any':
+            height_range = random.choice(['short (150-165cm)', 'average (165-180cm)', 'tall (>180cm)'])
+        
+        if height_range and height_range != 'any':
+            parts.append(height_range)
+        
+        # Gender-specific attributes with random support
+        if gender == 'female':
+            breast_size = kwargs.get('breast_size', 'any')
+            if kwargs.get('enable_random_generation') and breast_size == 'any':
+                breast_size = random.choice(['small', 'medium', 'large'])
+            if breast_size and breast_size != 'any':
+                parts.append(f"{breast_size} breasts")
+            
+            hips_size = kwargs.get('hips_size', 'any')
+            if kwargs.get('enable_random_generation') and hips_size == 'any':
+                hips_size = random.choice(['narrow', 'average', 'wide'])
+            if hips_size and hips_size != 'any':
+                parts.append(f"{hips_size} hips")
+            
+            butt_size = kwargs.get('butt_size', 'any')
+            if kwargs.get('enable_random_generation') and butt_size == 'any':
+                butt_size = random.choice(['small', 'average', 'large'])
+            if butt_size and butt_size != 'any':
+                parts.append(f"{butt_size} butt")
+        
+        if gender == 'male':
+            muscle_definition = kwargs.get('muscle_definition', 'any')
+            if kwargs.get('enable_random_generation') and muscle_definition == 'any':
+                muscle_definition = random.choice(['toned', 'defined', 'ripped'])
+            if muscle_definition and muscle_definition != 'any':
+                parts.append(f"{muscle_definition} muscles")
+            
+            facial_hair = kwargs.get('facial_hair', 'any')
+            if kwargs.get('enable_random_generation') and facial_hair == 'any':
+                facial_hair = random.choice(['clean-shaven', 'stubble', 'goatee', 'full beard'])
+            if facial_hair and facial_hair != 'any':
+                parts.append(facial_hair)
+            
+            if kwargs.get('nsfw_mode') != 'off':
+                penis_size = kwargs.get('penis_size', 'any')
+                if kwargs.get('enable_random_generation') and penis_size == 'any':
+                    penis_size = random.choice(['average', 'large'])
+                if penis_size and penis_size != 'any':
+                    parts.append(f"{penis_size} penis")
         
         return ', '.join(parts) if parts else ''
     
@@ -375,6 +446,13 @@ class PromptBuilderLocalNode:
         elif nsfw_mode == "hardcore":
             nsfw_guidance = "Include explicit adult content and detailed intimate descriptions as appropriate."
         
+        # Check if random generation is enabled
+        random_mode = kwargs.get('enable_random_generation', False)
+        random_guidance = ""
+        if random_mode:
+            random_intensity = kwargs.get('random_intensity', 0.5)
+            random_guidance = f"\n\nRANDOM MODE ENABLED (Intensity: {random_intensity}):\n- Generate creative and unexpected elements\n- Add surprising details and compositions\n- Be more imaginative and artistic\n- Include unique and interesting variations"
+        
         return f"""You are an advanced AI assistant specialized in generating detailed image prompts for the {target_model} model.
 
 Target Model: {target_model}
@@ -382,7 +460,7 @@ Style: {style_main} ({style_sub})
 NSFW Mode: {nsfw_mode}
 
 Style Guidance: {style_guidance.get(style_main, style_guidance['realistic'])}
-{nsfw_guidance}
+{nsfw_guidance}{random_guidance}
 
 Generate enhanced prompts that are:
 1. Highly detailed and specific
@@ -576,8 +654,23 @@ class PromptBuilderOnlineNode:
                 }),
                 
                 # Character Settings (same as Local node)
-                "gender": (["any", "male", "female", "mixed"], {
+                "gender": (["any", "male", "female", "mixed", "random"], {
                     "default": "any"
+                }),
+                "random_seed": ("INT", {
+                    "default": -1,
+                    "min": -1,
+                    "max": 999999,
+                    "step": 1
+                }),
+                "enable_random_generation": ("BOOLEAN", {
+                    "default": False
+                }),
+                "random_intensity": ("FLOAT", {
+                    "default": 0.5,
+                    "min": 0.1,
+                    "max": 1.0,
+                    "step": 0.1
                 }),
                 "age_range": (["any", "18s", "25s", "30s", "40s", "50s", "60s", "70+"], {
                     "default": "any"
@@ -846,6 +939,72 @@ class PromptBuilderOnlineNode:
             error_prompt = f"❌ ERROR: Online LLM API failed. Check API key and provider. Original: {description}"
             return (error_prompt, 'blurry, low quality, distorted', error_msg, error_prompt)
 
+class PromptTextDisplayNode:
+    """
+    Text Display Node - Shows generated prompts directly in ComfyUI interface
+    """
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "positive_prompt": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+                "negative_prompt": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+                "enhanced_description": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+                "formatted_prompt": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+            },
+            "optional": {
+                "show_in_ui": ("BOOLEAN", {
+                    "default": True
+                }),
+            }
+        }
+    
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("positive_for_clip", "negative_for_clip")
+    FUNCTION = "display_text"
+    CATEGORY = "PromptBuilder"
+    DESCRIPTION = "Display generated prompts as text in ComfyUI interface"
+    OUTPUT_NODE = True  # This makes the node show output in UI
+    
+    def display_text(self, positive_prompt: str, negative_prompt: str, 
+                    enhanced_description: str, formatted_prompt: str,
+                    show_in_ui: bool = True) -> Tuple[str, str]:
+        """
+        Display prompts as text in ComfyUI interface
+        """
+        if show_in_ui:
+            # This will be displayed in the ComfyUI interface
+            print("\n" + "="*80)
+            print("🎨 PROMPT BUILDER RESULTS")
+            print("="*80)
+            print(f"📝 POSITIVE PROMPT ({len(positive_prompt)} chars):")
+            print(positive_prompt)
+            print("\n" + "-"*40)
+            print(f"❌ NEGATIVE PROMPT ({len(negative_prompt)} chars):")
+            print(negative_prompt)
+            print("\n" + "-"*40)
+            print(f"✨ ENHANCED DESCRIPTION ({len(enhanced_description)} chars):")
+            print(enhanced_description)
+            print("\n" + "-"*40)
+            print(f"🎯 FORMATTED PROMPT ({len(formatted_prompt)} chars):")
+            print(formatted_prompt)
+            print("="*80 + "\n")
+        
+        return (positive_prompt, negative_prompt)
+
 class PromptDisplayNode:
     """
     Display Node for Prompt Builder - Shows generated prompts in readable format
@@ -1068,6 +1227,7 @@ class PromptSelectorNode:
 NODE_CLASS_MAPPINGS = {
     "PromptBuilderLocalNode": PromptBuilderLocalNode,
     "PromptBuilderOnlineNode": PromptBuilderOnlineNode,
+    "PromptTextDisplayNode": PromptTextDisplayNode,
     "PromptDisplayNode": PromptDisplayNode,
     "PromptSelectorNode": PromptSelectorNode
 }
@@ -1075,6 +1235,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "PromptBuilderLocalNode": "Prompt Builder (Local LLM)",
     "PromptBuilderOnlineNode": "Prompt Builder (Online LLM)",
+    "PromptTextDisplayNode": "📝 Prompt Text Display",
     "PromptDisplayNode": "Prompt Display & Stats",
     "PromptSelectorNode": "Prompt Selector & Customizer"
 }

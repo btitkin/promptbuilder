@@ -468,5 +468,55 @@
     "_meta": {
       "title": "CLIP Text Encode (Selected Anime)"
     }
+  },
+  "27": {
+    "inputs": {
+      "positive_prompt": [
+        "1",
+        0
+      ],
+      "negative_prompt": [
+        "1",
+        1
+      ],
+      "enhanced_description": [
+        "1",
+        2
+      ],
+      "formatted_prompt": [
+        "1",
+        3
+      ],
+      "show_in_ui": true
+    },
+    "class_type": "PromptTextDisplayNode",
+    "_meta": {
+      "title": "📝 Text Display - Realistic Results"
+    }
+  },
+  "28": {
+    "inputs": {
+      "positive_prompt": [
+        "10",
+        0
+      ],
+      "negative_prompt": [
+        "10",
+        1
+      ],
+      "enhanced_description": [
+        "10",
+        2
+      ],
+      "formatted_prompt": [
+        "10",
+        3
+      ],
+      "show_in_ui": true
+    },
+    "class_type": "PromptTextDisplayNode",
+    "_meta": {
+      "title": "📝 Text Display - Anime Results"
+    }
   }
 }
