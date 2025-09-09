@@ -1,0 +1,311 @@
+{
+  "1": {
+    "inputs": {
+      "description": "A stunning woman with captivating eyes",
+      "quick_preset": "Portrait Woman",
+      "api_url": "http://127.0.0.1:1234",
+      "model_name": "mistral",
+      "batch_count": 5,
+      "batch_variation_mode": "fixed_character",
+      "fixed_gender": "female",
+      "fixed_age": "25s",
+      "fixed_ethnicity": "caucasian",
+      "fixed_body_type": "curvy",
+      "fixed_breast_size": "large",
+      "fixed_hips_size": "wide",
+      "fixed_butt_size": "bubble",
+      "fixed_height": "average (165-180cm)",
+      "vary_locations": true,
+      "vary_poses": true,
+      "vary_emotions": true,
+      "vary_clothing": true,
+      "vary_lighting": true,
+      "include_nsfw": true,
+      "nsfw_ratio": 0.4,
+      "randomization_seed": 42,
+      "creativity_level": 0.8,
+      "use_cache": true,
+      "parallel_processing": false
+    },
+    "class_type": "PromptBuilderQuickNode",
+    "_meta": {
+      "title": "⚡ Quick Batch - Fixed Character Generator"
+    }
+  },
+  "2": {
+    "inputs": {
+      "text": [
+        "1",
+        4
+      ],
+      "title": "📊 BATCH GENERATION STATISTICS"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "📊 Batch Statistics"
+    }
+  },
+  "3": {
+    "inputs": {
+      "positive_prompt": [
+        "1",
+        0
+      ],
+      "negative_prompt": [
+        "1",
+        1
+      ],
+      "enhanced_description": [
+        "1",
+        2
+      ],
+      "formatted_prompt": [
+        "1",
+        3
+      ],
+      "output_selection": "formatted",
+      "remove_quality_tags": false
+    },
+    "class_type": "PromptSelectorNode",
+    "_meta": {
+      "title": "🎯 Select First Prompt"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": [
+        "1",
+        0
+      ],
+      "title": "📝 ALL POSITIVE PROMPTS"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "📝 View All Positive Prompts"
+    }
+  },
+  "5": {
+    "inputs": {
+      "text": [
+        "1",
+        1
+      ],
+      "title": "❌ ALL NEGATIVE PROMPTS"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "❌ View All Negative Prompts"
+    }
+  },
+  "6": {
+    "inputs": {
+      "ckpt_name": "sd_xl_base_1.0.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "📁 Load SDXL Model"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": [
+        "3",
+        0
+      ],
+      "clip": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "✅ CLIP Positive (First Prompt)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "text": [
+        "3",
+        1
+      ],
+      "clip": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "❌ CLIP Negative (First Prompt)"
+    }
+  },
+  "9": {
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "🖼️ Empty Latent (1024x1024)"
+    }
+  },
+  "10": {
+    "inputs": {
+      "seed": 123456,
+      "steps": 30,
+      "cfg": 7.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": [
+        "6",
+        0
+      ],
+      "positive": [
+        "7",
+        0
+      ],
+      "negative": [
+        "8",
+        0
+      ],
+      "latent_image": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "🎨 Generate Image (First Prompt)"
+    }
+  },
+  "11": {
+    "inputs": {
+      "samples": [
+        "10",
+        0
+      ],
+      "vae": [
+        "6",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "🔄 VAE Decode"
+    }
+  },
+  "12": {
+    "inputs": {
+      "filename_prefix": "PromptBuilder_Batch_",
+      "images": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "💾 Save Generated Image"
+    }
+  },
+  "13": {
+    "inputs": {
+      "description": "A handsome man with strong jawline",
+      "quick_preset": "Portrait Man",
+      "api_url": "http://127.0.0.1:1234",
+      "model_name": "mistral",
+      "batch_count": 3,
+      "batch_variation_mode": "themed_variations",
+      "randomization_seed": 999,
+      "creativity_level": 0.6,
+      "use_cache": true
+    },
+    "class_type": "PromptBuilderQuickNode",
+    "_meta": {
+      "title": "⚡ Quick Batch - Male Themed Variations"
+    }
+  },
+  "14": {
+    "inputs": {
+      "text": [
+        "13",
+        0
+      ],
+      "title": "👨 MALE PORTRAIT PROMPTS"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "👨 Male Prompts Display"
+    }
+  },
+  "15": {
+    "inputs": {
+      "description": "Magical fantasy landscape",
+      "quick_preset": "Fantasy Scene",
+      "api_url": "http://127.0.0.1:1234",
+      "model_name": "mistral",
+      "batch_count": 4,
+      "batch_variation_mode": "random_all",
+      "randomization_seed": 777,
+      "creativity_level": 0.9,
+      "use_cache": true
+    },
+    "class_type": "PromptBuilderQuickNode",
+    "_meta": {
+      "title": "⚡ Quick Batch - Fantasy Random"
+    }
+  },
+  "16": {
+    "inputs": {
+      "text": [
+        "15",
+        2
+      ],
+      "title": "🏰 FANTASY ENHANCED DESCRIPTIONS"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "🏰 Fantasy Descriptions"
+    }
+  },
+  "17": {
+    "inputs": {
+      "description": "Beautiful anime girl with colorful hair",
+      "quick_preset": "Anime Girl",
+      "api_url": "http://127.0.0.1:1234",
+      "model_name": "mistral",
+      "batch_count": 6,
+      "batch_variation_mode": "fixed_character",
+      "fixed_gender": "female",
+      "fixed_age": "18s",
+      "fixed_ethnicity": "japanese",
+      "fixed_body_type": "slim",
+      "fixed_breast_size": "small",
+      "vary_locations": true,
+      "vary_poses": true,
+      "vary_emotions": true,
+      "vary_clothing": true,
+      "include_nsfw": false,
+      "randomization_seed": 555,
+      "creativity_level": 0.7,
+      "use_cache": true
+    },
+    "class_type": "PromptBuilderQuickNode",
+    "_meta": {
+      "title": "⚡ Quick Batch - Anime Girl SFW Only"
+    }
+  },
+  "18": {
+    "inputs": {
+      "text": [
+        "17",
+        3
+      ],
+      "title": "🎌 ANIME FORMATTED PROMPTS"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "🎌 Anime Prompts Display"
+    }
+  }
+}

@@ -187,14 +187,61 @@ class PromptBuilderLocalNode:
                 "quality_tags": ("BOOLEAN", {
                     "default": True
                 }),
+                
+                # Batch Processing
+                "enable_batch": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable batch generation (1-100 prompts)"
+                }),
+                "batch_count": ("INT", {
+                    "default": 10,
+                    "min": 1,
+                    "max": 100,
+                    "step": 1,
+                    "tooltip": "Number of prompts to generate in batch"
+                }),
+                "full_randomize_batch": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Enable full randomization for batch generation"
+                }),
+                
+                # Selective Randomization (only visible when full_randomize_batch = True)
+                "random_locations": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Randomize locations in batch"
+                }),
+                "random_poses": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Randomize poses in batch"
+                }),
+                "random_emotions": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Randomize emotions in batch"
+                }),
+                "random_clothing": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Randomize clothing in batch"
+                }),
+                "random_lighting": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "Randomize lighting in batch"
+                }),
+                
+                # Custom Preserved Traits
+                "preserved_traits": ("STRING", {
+                    "default": "",
+                    "multiline": True,
+                    "placeholder": "freckles, blonde hair, green eyes...",
+                    "tooltip": "Traits that must be preserved in all batch variations"
+                }),
             }
         }
     
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING")
-    RETURN_NAMES = ("positive_prompt", "negative_prompt", "enhanced_description", "formatted_prompt")
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("positive_prompt", "negative_prompt", "enhanced_description", "formatted_prompt", "batch_info")
     FUNCTION = "generate_prompts"
     CATEGORY = "PromptBuilder"
-    DESCRIPTION = "Advanced Prompt Builder with Local LLM - Full Feature Set"
+    DESCRIPTION = "Advanced Prompt Builder with Local LLM - Full Feature Set + Intelligent Batch Processing"
     
     def __init__(self):
         self.session = requests.Session()
@@ -478,79 +525,224 @@ Return a JSON object with:
 }}"""
     
     def generate_prompts(self, description: str, api_url: str, model_name: str, target_model: str,
-                        style_main: str, style_sub: str, num_variations: int, **kwargs) -> Tuple[str, str, str, str]:
+                        style_main: str, style_sub: str, num_variations: int, **kwargs) -> Tuple[str, str, str, str, str]:
         """
-        Generate enhanced prompts with full feature set
+        Generate enhanced prompts with full feature set and intelligent batch processing
         """
         try:
-            # Build character description
-            character_desc = self.build_character_description(**kwargs)
+            # Check if batch processing is enabled
+            enable_batch = kwargs.get('enable_batch', False)
             
-            # Apply presets
-            shot_elements = self.apply_presets(kwargs.get('shot_presets', ''), self.shot_presets)
-            pose_elements = self.apply_presets(kwargs.get('pose_presets', ''), self.pose_presets)
-            location_elements = self.apply_presets(kwargs.get('location_presets', ''), self.location_presets)
-            clothing_elements = self.apply_presets(kwargs.get('clothing_presets', ''), self.clothing_presets)
-            
-            # Combine all elements
-            full_description = description
-            if character_desc:
-                full_description += f", {character_desc}"
-            
-            preset_elements = shot_elements + pose_elements + location_elements + clothing_elements
-            if preset_elements:
-                full_description += f", {', '.join(preset_elements)}"
-            
-            # Create system prompt
-            nsfw_mode = kwargs.get('nsfw_mode', 'off')
-            # Remove nsfw_mode from kwargs to avoid duplicate argument error
-            kwargs_copy = kwargs.copy()
-            kwargs_copy.pop('nsfw_mode', None)
-            system_prompt = self.create_system_prompt(target_model, style_main, style_sub, nsfw_mode, **kwargs_copy)
-            
-            # API configuration
-            config = {
-                'api_url': api_url.rstrip('/'),
-                'model_name': model_name,
-                'api_key': kwargs.get('api_key', ''),
-                'temperature': kwargs.get('temperature', 0.7),
-                'max_tokens': kwargs.get('max_tokens', 2000)
-            }
-            
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Create enhanced prompts for: {full_description}"}
-            ]
-            
-            response = self.make_api_call(config, messages)
-            
-            # Parse response
-            try:
-                result = json.loads(response)
-                positive_prompt = result.get('positive', full_description)
-                negative_prompt = result.get('negative', kwargs.get('negative_prompt', 'blurry, low quality, distorted'))
-                enhanced_description = result.get('enhanced_description', full_description)
-            except json.JSONDecodeError:
-                positive_prompt = response
-                negative_prompt = kwargs.get('negative_prompt', 'blurry, low quality, distorted')
-                enhanced_description = response
-            
-            # Add quality tags if enabled
-            if kwargs.get('quality_tags', True):
-                quality_tags = self.get_quality_tags(target_model, style_main, style_sub)
-                positive_prompt = ', '.join(quality_tags) + ', ' + positive_prompt
-            
-            # Format final prompt based on target model
-            formatted_prompt = self.format_for_model(positive_prompt, target_model, kwargs)
-            
-            return (positive_prompt, negative_prompt, enhanced_description, formatted_prompt)
-            
+            if enable_batch:
+                return self.generate_batch_with_smart_randomization(
+                    description, api_url, model_name, target_model, 
+                    style_main, style_sub, num_variations, **kwargs
+                )
+            else:
+                # Single prompt generation (original logic)
+                return self.generate_single_prompt(
+                    description, api_url, model_name, target_model,
+                    style_main, style_sub, num_variations, **kwargs
+                )
+                
         except Exception as e:
-            error_msg = f"❌ LLM API Error: {str(e)}"
-            print(f"PromptBuilder Local Node Error: {error_msg}")
-            # Return clear error messages instead of fallback to description
-            error_prompt = f"❌ ERROR: Local LLM not responding. Check API URL and model. Original: {description}"
-            return (error_prompt, 'blurry, low quality, distorted', error_msg, error_prompt)
+            error_msg = f"❌ Prompt Generation Error: {str(e)}"
+            return (error_msg, error_msg, error_msg, error_msg, error_msg)
+    
+    def generate_single_prompt(self, description: str, api_url: str, model_name: str, target_model: str,
+                              style_main: str, style_sub: str, num_variations: int, **kwargs) -> Tuple[str, str, str, str, str]:
+        """
+        Generate single prompt (original functionality)
+        """
+        # Build character description
+        character_desc = self.build_character_description(**kwargs)
+        
+        # Apply presets
+        shot_elements = self.apply_presets(kwargs.get('shot_presets', ''), self.shot_presets)
+        pose_elements = self.apply_presets(kwargs.get('pose_presets', ''), self.pose_presets)
+        location_elements = self.apply_presets(kwargs.get('location_presets', ''), self.location_presets)
+        clothing_elements = self.apply_presets(kwargs.get('clothing_presets', ''), self.clothing_presets)
+        
+        # Combine all elements
+        full_description = description
+        if character_desc:
+            full_description += f", {character_desc}"
+        
+        preset_elements = shot_elements + pose_elements + location_elements + clothing_elements
+        if preset_elements:
+            full_description += f", {', '.join(preset_elements)}"
+        
+        # Create system prompt
+        nsfw_mode = kwargs.get('nsfw_mode', 'off')
+        # Remove nsfw_mode from kwargs to avoid duplicate argument error
+        kwargs_copy = kwargs.copy()
+        kwargs_copy.pop('nsfw_mode', None)
+        system_prompt = self.create_system_prompt(target_model, style_main, style_sub, nsfw_mode, **kwargs_copy)
+        
+        # API configuration
+        config = {
+            'api_url': api_url.rstrip('/'),
+            'model_name': model_name,
+            'api_key': kwargs.get('api_key', ''),
+            'temperature': kwargs.get('temperature', 0.7),
+            'max_tokens': kwargs.get('max_tokens', 2000)
+        }
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Create enhanced prompts for: {full_description}"}
+        ]
+        
+        response = self.make_api_call(config, messages)
+        
+        # Parse response
+        try:
+            result = json.loads(response)
+            positive_prompt = result.get('positive', full_description)
+            negative_prompt = result.get('negative', kwargs.get('negative_prompt', 'blurry, low quality, distorted'))
+            enhanced_description = result.get('enhanced_description', full_description)
+        except json.JSONDecodeError:
+            positive_prompt = response
+            negative_prompt = kwargs.get('negative_prompt', 'blurry, low quality, distorted')
+            enhanced_description = response
+        
+        # Add quality tags if enabled
+        if kwargs.get('quality_tags', True):
+            quality_tags = self.get_quality_tags(target_model, style_main, style_sub)
+            positive_prompt = ', '.join(quality_tags) + ', ' + positive_prompt
+        
+        # Format final prompt based on target model
+        formatted_prompt = self.format_for_model(positive_prompt, target_model, kwargs)
+        
+        # Single prompt info
+        batch_info = "📝 Single Prompt Generated"
+        
+        return (positive_prompt, negative_prompt, enhanced_description, formatted_prompt, batch_info)
+    
+    def generate_batch_with_smart_randomization(self, description: str, api_url: str, model_name: str, target_model: str,
+                                               style_main: str, style_sub: str, num_variations: int, **kwargs) -> Tuple[str, str, str, str, str]:
+        """
+        Generate batch with intelligent randomization - exactly as user requested
+        """
+        batch_count = kwargs.get('batch_count', 10)
+        full_randomize_batch = kwargs.get('full_randomize_batch', False)
+        preserved_traits = kwargs.get('preserved_traits', '').strip()
+        
+        # Variation pools for randomization
+        variation_pools = {
+            'locations': [
+                'beach', 'forest', 'city street', 'bedroom', 'kitchen', 'office', 'park', 'cafe',
+                'library', 'gym', 'rooftop', 'garden', 'studio', 'bathroom', 'living room',
+                'restaurant', 'bar', 'club', 'hotel room', 'car', 'train', 'airplane', 'boat',
+                'mountain', 'desert', 'snow', 'rain', 'sunset', 'sunrise', 'night', 'indoor', 'outdoor'
+            ],
+            'poses': [
+                'standing', 'sitting', 'lying down', 'walking', 'running', 'dancing', 'jumping',
+                'leaning', 'stretching', 'yoga pose', 'meditation', 'reading', 'writing', 'cooking',
+                'exercising', 'swimming', 'driving', 'sleeping', 'laughing', 'crying', 'thinking',
+                'looking away', 'looking at camera', 'profile view', 'back view', 'side view'
+            ],
+            'emotions': [
+                'happy', 'sad', 'angry', 'surprised', 'excited', 'calm', 'confident', 'shy',
+                'mysterious', 'seductive', 'playful', 'serious', 'thoughtful', 'dreamy',
+                'fierce', 'gentle', 'passionate', 'melancholic', 'joyful', 'determined'
+            ],
+            'clothing': [
+                'casual wear', 'formal dress', 'business suit', 'summer dress', 'winter coat',
+                'sportswear', 'swimwear', 'lingerie', 'pajamas', 'jeans and t-shirt', 'skirt',
+                'shorts', 'tank top', 'sweater', 'jacket', 'boots', 'heels', 'sneakers',
+                'hat', 'sunglasses', 'jewelry', 'scarf', 'gloves'
+            ],
+            'lighting': [
+                'natural light', 'golden hour', 'blue hour', 'studio lighting', 'soft lighting',
+                'dramatic lighting', 'backlighting', 'side lighting', 'rim lighting',
+                'candlelight', 'neon lighting', 'sunset lighting', 'morning light', 'overcast',
+                'harsh shadows', 'soft shadows', 'no shadows', 'colorful lighting'
+            ]
+        }
+        
+        batch_results = {
+            'positive': [],
+            'negative': [],
+            'enhanced': [],
+            'formatted': []
+        }
+        
+        # Generate batch
+        for i in range(batch_count):
+            # Create variation for this iteration
+            varied_description = self.create_smart_variation(
+                description, i, full_randomize_batch, preserved_traits, variation_pools, **kwargs
+            )
+            
+            # Generate single prompt for this variation
+            single_result = self.generate_single_prompt(
+                varied_description, api_url, model_name, target_model,
+                style_main, style_sub, 1, **kwargs
+            )
+            
+            # Add to batch results
+            batch_results['positive'].append(f"[{i+1}] {single_result[0]}")
+            batch_results['negative'].append(f"[{i+1}] {single_result[1]}")
+            batch_results['enhanced'].append(f"[{i+1}] {single_result[2]}")
+            batch_results['formatted'].append(f"[{i+1}] {single_result[3]}")
+        
+        # Combine results
+        batch_positive = "\n\n".join(batch_results['positive'])
+        batch_negative = "\n\n".join(batch_results['negative'])
+        batch_enhanced = "\n\n".join(batch_results['enhanced'])
+        batch_formatted = "\n\n".join(batch_results['formatted'])
+        
+        # Create batch info
+        randomization_info = "Full Randomization" if full_randomize_batch else "Fixed Settings"
+        batch_info = f"""🎯 INTELLIGENT BATCH COMPLETE
+═══════════════════════════════════
+📊 Generated: {batch_count} prompts
+🔄 Mode: {randomization_info}
+🎨 Preserved Traits: {preserved_traits if preserved_traits else 'None'}
+💡 Smart Randomization: {'Enabled' if full_randomize_batch else 'Disabled'}
+═══════════════════════════════════"""
+        
+        return (batch_positive, batch_negative, batch_enhanced, batch_formatted, batch_info)
+    
+    def create_smart_variation(self, base_description: str, iteration: int, full_randomize: bool, 
+                              preserved_traits: str, variation_pools: dict, **kwargs) -> str:
+        """
+        Create smart variations based on user settings - EXACTLY as requested
+        """
+        variations = []
+        
+        # Always add preserved traits if specified
+        if preserved_traits:
+            variations.append(preserved_traits)
+        
+        if full_randomize:
+            # Add random elements based on user settings
+            if kwargs.get('random_locations', True):
+                location = random.choice(variation_pools['locations'])
+                variations.append(f"in {location}")
+            
+            if kwargs.get('random_poses', True):
+                pose = random.choice(variation_pools['poses'])
+                variations.append(f"{pose}")
+            
+            if kwargs.get('random_emotions', True):
+                emotion = random.choice(variation_pools['emotions'])
+                variations.append(f"{emotion} expression")
+            
+            if kwargs.get('random_clothing', True):
+                clothing = random.choice(variation_pools['clothing'])
+                variations.append(f"wearing {clothing}")
+            
+            if kwargs.get('random_lighting', True):
+                lighting = random.choice(variation_pools['lighting'])
+                variations.append(f"{lighting}")
+        
+        # Combine base description with variations
+        if variations:
+            return f"{base_description}, {', '.join(variations)}"
+        else:
+            return base_description
     
     def format_for_model(self, prompt: str, target_model: str, kwargs: Dict[str, Any]) -> str:
         """
