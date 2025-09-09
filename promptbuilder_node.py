@@ -1033,6 +1033,417 @@ class PromptTextDisplayNode:
         
         return (positive_prompt, negative_prompt, display_text)
 
+class PromptBuilderQuickNode:
+    """
+    Quick Preset Node - Simplified interface with pre-configured presets
+    """
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "description": ("STRING", {
+                    "multiline": True,
+                    "default": "A beautiful woman",
+                    "placeholder": "Simple description..."
+                }),
+                "quick_preset": (["Portrait Woman", "Portrait Man", "Anime Girl", "Anime Boy", "Fantasy Scene", "Landscape", "Action Scene", "Custom"], {
+                    "default": "Portrait Woman"
+                }),
+                "api_url": ("STRING", {
+                    "default": "http://127.0.0.1:1234",
+                    "placeholder": "Local LLM API URL"
+                }),
+                "model_name": ("STRING", {
+                    "default": "mistral",
+                    "placeholder": "Model name"
+                }),
+            },
+            "optional": {
+                # Batch Processing
+                "batch_count": ("INT", {
+                    "default": 1,
+                    "min": 1,
+                    "max": 100,
+                    "step": 1
+                }),
+                "batch_variation_mode": (["random_all", "fixed_character", "themed_variations"], {
+                    "default": "random_all"
+                }),
+                
+                # Fixed Character Settings (for batch_variation_mode = "fixed_character")
+                "fixed_gender": (["female", "male"], {
+                    "default": "female"
+                }),
+                "fixed_age": (["18s", "25s", "30s", "40s", "50s"], {
+                    "default": "25s"
+                }),
+                "fixed_ethnicity": (["caucasian", "european", "asian", "japanese", "chinese", "korean", "african", "hispanic"], {
+                    "default": "caucasian"
+                }),
+                "fixed_body_type": (["slim", "curvy", "athletic", "instagram model"], {
+                    "default": "curvy"
+                }),
+                "fixed_breast_size": (["small", "medium", "large", "huge"], {
+                    "default": "medium"
+                }),
+                "fixed_hips_size": (["narrow", "average", "wide"], {
+                    "default": "average"
+                }),
+                "fixed_butt_size": (["small", "average", "large", "bubble"], {
+                    "default": "average"
+                }),
+                "fixed_height": (["short (150-165cm)", "average (165-180cm)", "tall (>180cm)"], {
+                    "default": "average (165-180cm)"
+                }),
+                
+                # Variation Settings
+                "vary_locations": ("BOOLEAN", {
+                    "default": True
+                }),
+                "vary_poses": ("BOOLEAN", {
+                    "default": True
+                }),
+                "vary_emotions": ("BOOLEAN", {
+                    "default": True
+                }),
+                "vary_clothing": ("BOOLEAN", {
+                    "default": True
+                }),
+                "vary_lighting": ("BOOLEAN", {
+                    "default": True
+                }),
+                "include_nsfw": ("BOOLEAN", {
+                    "default": False
+                }),
+                "nsfw_ratio": ("FLOAT", {
+                    "default": 0.3,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.1
+                }),
+                
+                # Advanced Randomization
+                "randomization_seed": ("INT", {
+                    "default": -1,
+                    "min": -1,
+                    "max": 999999,
+                    "step": 1
+                }),
+                "creativity_level": ("FLOAT", {
+                    "default": 0.7,
+                    "min": 0.1,
+                    "max": 1.0,
+                    "step": 0.1
+                }),
+                
+                # Performance
+                "use_cache": ("BOOLEAN", {
+                    "default": True
+                }),
+                "parallel_processing": ("BOOLEAN", {
+                    "default": False
+                }),
+            }
+        }
+    
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("batch_positive", "batch_negative", "batch_enhanced", "batch_formatted", "batch_info")
+    FUNCTION = "generate_batch_prompts"
+    CATEGORY = "PromptBuilder"
+    DESCRIPTION = "Quick Preset Node with Batch Processing and Advanced Randomization"
+    
+    def __init__(self):
+        # Inherit from main node
+        self.main_node = PromptBuilderLocalNode()
+        
+        # Quick presets configuration
+        self.quick_presets = {
+            "Portrait Woman": {
+                "target_model": "SDXL",
+                "style_main": "realistic",
+                "style_sub": "professional",
+                "gender": "female",
+                "age_range": "25s",
+                "shot_presets": "portrait, headshot",
+                "quality_tags": True
+            },
+            "Portrait Man": {
+                "target_model": "SDXL",
+                "style_main": "realistic",
+                "style_sub": "professional",
+                "gender": "male",
+                "age_range": "30s",
+                "shot_presets": "portrait, headshot",
+                "quality_tags": True
+            },
+            "Anime Girl": {
+                "target_model": "Illustrious",
+                "style_main": "anime",
+                "style_sub": "ghibli",
+                "gender": "female",
+                "age_range": "18s",
+                "shot_presets": "portrait",
+                "quality_tags": True
+            },
+            "Anime Boy": {
+                "target_model": "Illustrious",
+                "style_main": "anime",
+                "style_sub": "naruto",
+                "gender": "male",
+                "age_range": "18s",
+                "shot_presets": "portrait",
+                "quality_tags": True
+            },
+            "Fantasy Scene": {
+                "target_model": "SDXL",
+                "style_main": "realistic",
+                "style_sub": "professional",
+                "location_presets": "fantasy, magical",
+                "quality_tags": True
+            },
+            "Landscape": {
+                "target_model": "SDXL",
+                "style_main": "realistic",
+                "style_sub": "professional",
+                "location_presets": "outdoor, nature",
+                "shot_presets": "wide shot, landscape",
+                "quality_tags": True
+            },
+            "Action Scene": {
+                "target_model": "SDXL",
+                "style_main": "realistic",
+                "style_sub": "professional",
+                "pose_presets": "dynamic, action",
+                "shot_presets": "action shot",
+                "quality_tags": True
+            }
+        }
+        
+        # Variation pools for batch generation
+        self.variation_pools = {
+            "locations": [
+                "beach", "forest", "city street", "bedroom", "kitchen", "office", "park", "cafe", 
+                "library", "gym", "rooftop", "garden", "studio", "bathroom", "living room", 
+                "restaurant", "bar", "club", "hotel room", "car", "train", "airplane", "boat",
+                "mountain", "desert", "snow", "rain", "sunset", "sunrise", "night", "indoor", "outdoor"
+            ],
+            "poses": [
+                "standing", "sitting", "lying down", "walking", "running", "dancing", "jumping",
+                "leaning", "stretching", "yoga pose", "meditation", "reading", "writing", "cooking",
+                "exercising", "swimming", "driving", "sleeping", "laughing", "crying", "thinking",
+                "looking away", "looking at camera", "profile view", "back view", "side view"
+            ],
+            "emotions": [
+                "happy", "sad", "angry", "surprised", "excited", "calm", "confident", "shy",
+                "mysterious", "seductive", "playful", "serious", "thoughtful", "dreamy",
+                "fierce", "gentle", "passionate", "melancholic", "joyful", "determined"
+            ],
+            "clothing": [
+                "casual wear", "formal dress", "business suit", "summer dress", "winter coat",
+                "sportswear", "swimwear", "lingerie", "pajamas", "jeans and t-shirt", "skirt",
+                "shorts", "tank top", "sweater", "jacket", "boots", "heels", "sneakers",
+                "hat", "sunglasses", "jewelry", "scarf", "gloves"
+            ],
+            "lighting": [
+                "natural light", "golden hour", "blue hour", "studio lighting", "soft lighting",
+                "dramatic lighting", "backlighting", "side lighting", "rim lighting",
+                "candlelight", "neon lighting", "sunset lighting", "morning light", "overcast",
+                "harsh shadows", "soft shadows", "no shadows", "colorful lighting"
+            ],
+            "nsfw_elements": [
+                "revealing clothing", "intimate pose", "sensual expression", "bedroom scene",
+                "shower scene", "massage", "romantic atmosphere", "seductive pose",
+                "partial nudity", "artistic nudity", "boudoir photography", "intimate moment"
+            ]
+        }
+        
+        # Cache for performance
+        self.cache = {}
+    
+    def generate_batch_prompts(self, description: str, quick_preset: str, api_url: str, 
+                              model_name: str, **kwargs) -> Tuple[str, str, str, str, str]:
+        """
+        Generate batch prompts with advanced randomization and fixed character support
+        """
+        try:
+            batch_count = kwargs.get('batch_count', 1)
+            batch_variation_mode = kwargs.get('batch_variation_mode', 'random_all')
+            use_cache = kwargs.get('use_cache', True)
+            
+            # Set random seed if provided
+            randomization_seed = kwargs.get('randomization_seed', -1)
+            if randomization_seed != -1:
+                random.seed(randomization_seed)
+            
+            # Get preset configuration
+            if quick_preset != "Custom":
+                preset_config = self.quick_presets.get(quick_preset, {})
+                # Merge preset with kwargs
+                for key, value in preset_config.items():
+                    if key not in kwargs:
+                        kwargs[key] = value
+            
+            batch_results = {
+                'positive': [],
+                'negative': [],
+                'enhanced': [],
+                'formatted': []
+            }
+            
+            # Generate batch
+            for i in range(batch_count):
+                # Create variation for this iteration
+                varied_description = self.create_variation(
+                    description, i, batch_variation_mode, **kwargs
+                )
+                
+                # Check cache
+                cache_key = f"{varied_description}_{quick_preset}_{hash(str(kwargs))}"
+                if use_cache and cache_key in self.cache:
+                    result = self.cache[cache_key]
+                else:
+                    # Generate prompt using main node
+                    result = self.main_node.generate_prompts(
+                        varied_description, api_url, model_name,
+                        kwargs.get('target_model', 'SDXL'),
+                        kwargs.get('style_main', 'realistic'),
+                        kwargs.get('style_sub', 'professional'),
+                        1, **kwargs
+                    )
+                    
+                    # Cache result
+                    if use_cache:
+                        self.cache[cache_key] = result
+                
+                # Add to batch results
+                batch_results['positive'].append(f"[{i+1}] {result[0]}")
+                batch_results['negative'].append(f"[{i+1}] {result[1]}")
+                batch_results['enhanced'].append(f"[{i+1}] {result[2]}")
+                batch_results['formatted'].append(f"[{i+1}] {result[3]}")
+            
+            # Combine results
+            batch_positive = "\n\n".join(batch_results['positive'])
+            batch_negative = "\n\n".join(batch_results['negative'])
+            batch_enhanced = "\n\n".join(batch_results['enhanced'])
+            batch_formatted = "\n\n".join(batch_results['formatted'])
+            
+            # Create batch info
+            batch_info = f"""🎯 BATCH GENERATION COMPLETE
+═══════════════════════════════════
+📊 Generated: {batch_count} prompts
+🎨 Preset: {quick_preset}
+🔄 Mode: {batch_variation_mode}
+🎲 Seed: {randomization_seed if randomization_seed != -1 else 'Random'}
+💾 Cache: {'Enabled' if use_cache else 'Disabled'}
+═══════════════════════════════════"""
+            
+            return (batch_positive, batch_negative, batch_enhanced, batch_formatted, batch_info)
+            
+        except Exception as e:
+            error_msg = f"❌ Batch Generation Error: {str(e)}"
+            return (error_msg, error_msg, error_msg, error_msg, error_msg)
+    
+    def create_variation(self, base_description: str, iteration: int, 
+                        variation_mode: str, **kwargs) -> str:
+        """
+        Create variations based on mode and settings
+        """
+        if variation_mode == "fixed_character":
+            return self.create_fixed_character_variation(base_description, iteration, **kwargs)
+        elif variation_mode == "themed_variations":
+            return self.create_themed_variation(base_description, iteration, **kwargs)
+        else:  # random_all
+            return self.create_random_variation(base_description, iteration, **kwargs)
+    
+    def create_fixed_character_variation(self, base_description: str, iteration: int, **kwargs) -> str:
+        """
+        Create variation with fixed character but varied everything else
+        """
+        # Fixed character attributes
+        fixed_attrs = []
+        fixed_attrs.append(f"{kwargs.get('fixed_gender', 'female')}")
+        fixed_attrs.append(f"{kwargs.get('fixed_age', '25s')} years old")
+        fixed_attrs.append(f"{kwargs.get('fixed_ethnicity', 'caucasian')}")
+        fixed_attrs.append(f"{kwargs.get('fixed_body_type', 'curvy')} body type")
+        fixed_attrs.append(f"{kwargs.get('fixed_height', 'average (165-180cm)')}")
+        
+        if kwargs.get('fixed_gender') == 'female':
+            fixed_attrs.append(f"{kwargs.get('fixed_breast_size', 'medium')} breasts")
+            fixed_attrs.append(f"{kwargs.get('fixed_hips_size', 'average')} hips")
+            fixed_attrs.append(f"{kwargs.get('fixed_butt_size', 'average')} butt")
+        
+        # Variable elements
+        variations = []
+        
+        if kwargs.get('vary_locations', True):
+            location = random.choice(self.variation_pools['locations'])
+            variations.append(f"in {location}")
+        
+        if kwargs.get('vary_poses', True):
+            pose = random.choice(self.variation_pools['poses'])
+            variations.append(f"{pose}")
+        
+        if kwargs.get('vary_emotions', True):
+            emotion = random.choice(self.variation_pools['emotions'])
+            variations.append(f"{emotion} expression")
+        
+        if kwargs.get('vary_clothing', True):
+            clothing = random.choice(self.variation_pools['clothing'])
+            variations.append(f"wearing {clothing}")
+        
+        if kwargs.get('vary_lighting', True):
+            lighting = random.choice(self.variation_pools['lighting'])
+            variations.append(f"{lighting}")
+        
+        # NSFW elements
+        if kwargs.get('include_nsfw', False):
+            nsfw_ratio = kwargs.get('nsfw_ratio', 0.3)
+            if random.random() < nsfw_ratio:
+                nsfw_element = random.choice(self.variation_pools['nsfw_elements'])
+                variations.append(f"{nsfw_element}")
+        
+        # Combine all elements
+        character_desc = ", ".join(fixed_attrs)
+        variation_desc = ", ".join(variations)
+        
+        return f"{base_description}, {character_desc}, {variation_desc}"
+    
+    def create_themed_variation(self, base_description: str, iteration: int, **kwargs) -> str:
+        """
+        Create themed variations (e.g., all beach, all office, etc.)
+        """
+        themes = {
+            0: "beach theme",
+            1: "office theme", 
+            2: "home theme",
+            3: "outdoor theme",
+            4: "night theme"
+        }
+        
+        theme_index = iteration % len(themes)
+        theme = themes[theme_index]
+        
+        return f"{base_description}, {theme}"
+    
+    def create_random_variation(self, base_description: str, iteration: int, **kwargs) -> str:
+        """
+        Create completely random variations
+        """
+        variations = []
+        creativity = kwargs.get('creativity_level', 0.7)
+        
+        # Add random elements based on creativity level
+        num_variations = int(creativity * 5) + 1
+        
+        all_elements = []
+        for pool in self.variation_pools.values():
+            all_elements.extend(pool)
+        
+        selected_elements = random.sample(all_elements, min(num_variations, len(all_elements)))
+        
+        return f"{base_description}, {', '.join(selected_elements)}"
+
 class ShowTextNode:
     """
     Show Text Node - Displays text directly in ComfyUI interface
@@ -1290,6 +1701,7 @@ class PromptSelectorNode:
 NODE_CLASS_MAPPINGS = {
     "PromptBuilderLocalNode": PromptBuilderLocalNode,
     "PromptBuilderOnlineNode": PromptBuilderOnlineNode,
+    "PromptBuilderQuickNode": PromptBuilderQuickNode,
     "PromptTextDisplayNode": PromptTextDisplayNode,
     "ShowTextNode": ShowTextNode,
     "PromptDisplayNode": PromptDisplayNode,
@@ -1299,6 +1711,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "PromptBuilderLocalNode": "Prompt Builder (Local LLM)",
     "PromptBuilderOnlineNode": "Prompt Builder (Online LLM)",
+    "PromptBuilderQuickNode": "⚡ Quick Preset & Batch",
     "PromptTextDisplayNode": "📝 Prompt Text Display",
     "ShowTextNode": "📄 Show Text",
     "PromptDisplayNode": "Prompt Display & Stats",

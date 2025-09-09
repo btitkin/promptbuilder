@@ -1,0 +1,100 @@
+{
+  "1": {
+    "inputs": {
+      "description": "A beautiful woman",
+      "quick_preset": "Portrait Woman",
+      "api_url": "http://127.0.0.1:1234",
+      "model_name": "mistral",
+      "batch_count": 10,
+      "batch_variation_mode": "fixed_character",
+      "fixed_gender": "female",
+      "fixed_age": "25s",
+      "fixed_ethnicity": "caucasian",
+      "fixed_body_type": "curvy",
+      "fixed_breast_size": "medium",
+      "fixed_hips_size": "average",
+      "fixed_butt_size": "average",
+      "fixed_height": "average (165-180cm)",
+      "vary_locations": true,
+      "vary_poses": true,
+      "vary_emotions": true,
+      "vary_clothing": true,
+      "vary_lighting": true,
+      "include_nsfw": true,
+      "nsfw_ratio": 0.3,
+      "randomization_seed": 12345,
+      "creativity_level": 0.8,
+      "use_cache": true,
+      "parallel_processing": false
+    },
+    "class_type": "PromptBuilderQuickNode",
+    "_meta": {
+      "title": "⚡ Quick Batch Generator - Fixed Character"
+    }
+  },
+  "2": {
+    "inputs": {
+      "text": [
+        "1",
+        4
+      ],
+      "title": "📊 BATCH GENERATION INFO"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "📊 Batch Info Display"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": [
+        "1",
+        0
+      ],
+      "title": "📝 BATCH POSITIVE PROMPTS"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "📝 Positive Prompts Display"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": [
+        "1",
+        1
+      ],
+      "title": "❌ BATCH NEGATIVE PROMPTS"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "❌ Negative Prompts Display"
+    }
+  },
+  "5": {
+    "inputs": {
+      "text": [
+        "1",
+        2
+      ],
+      "title": "✨ BATCH ENHANCED DESCRIPTIONS"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "✨ Enhanced Descriptions Display"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": [
+        "1",
+        3
+      ],
+      "title": "🎯 BATCH FORMATTED PROMPTS"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "🎯 Formatted Prompts Display"
+    }
+  }
+}
