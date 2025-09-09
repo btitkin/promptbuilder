@@ -501,7 +501,11 @@ Return a JSON object with:
                 full_description += f", {', '.join(preset_elements)}"
             
             # Create system prompt
-            system_prompt = self.create_system_prompt(target_model, style_main, style_sub, kwargs.get('nsfw_mode', 'off'), **kwargs)
+            nsfw_mode = kwargs.get('nsfw_mode', 'off')
+            # Remove nsfw_mode from kwargs to avoid duplicate argument error
+            kwargs_copy = kwargs.copy()
+            kwargs_copy.pop('nsfw_mode', None)
+            system_prompt = self.create_system_prompt(target_model, style_main, style_sub, nsfw_mode, **kwargs_copy)
             
             # API configuration
             config = {
@@ -902,7 +906,11 @@ class PromptBuilderOnlineNode:
                 full_description += f", {', '.join(preset_elements)}"
             
             # Create system prompt
-            system_prompt = self.create_system_prompt(target_model, style_main, style_sub, kwargs.get('nsfw_mode', 'off'), **kwargs)
+            nsfw_mode = kwargs.get('nsfw_mode', 'off')
+            # Remove nsfw_mode from kwargs to avoid duplicate argument error
+            kwargs_copy = kwargs.copy()
+            kwargs_copy.pop('nsfw_mode', None)
+            system_prompt = self.create_system_prompt(target_model, style_main, style_sub, nsfw_mode, **kwargs_copy)
             
             messages = [
                 {"role": "system", "content": system_prompt},
