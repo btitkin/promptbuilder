@@ -14,12 +14,6 @@ Integracja Prompt Builder z ComfyUI umożliwiająca generowanie zaawansowanych p
 
 ### 1. Przez ComfyUI Manager (Zalecane)
 
-1. Otwórz ComfyUI
-2. Kliknij "Manager" w menu
-3. Wybierz "Install Custom Nodes"
-4. Wklej URL: `https://github.com/btitkin/promptbuilder.git`
-5. Kliknij "Install"
-6. Zrestartuj ComfyUI
 
 ### 2. Instalacja manualna
 
