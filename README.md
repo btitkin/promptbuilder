@@ -1,14 +1,22 @@
-# ComfyUI Prompt Builder Node
+# ComfyUI Prompt Builder Nodes - Advanced Edition
 
-A ComfyUI integration for Prompt Builder that enables advanced prompt generation using local LLM models.
+A comprehensive ComfyUI integration for Prompt Builder featuring **two powerful nodes** with the complete feature set from the main application.
 
 ## 🚀 Features
 
-- **Local LLM Support** - Works with local AI models (Ollama, Mistral, LM Studio)
-- **Prompt Generation** - Automatically creates detailed positive and negative prompts
-- **Multiple Styles** - Support for different styles: photorealistic, anime, artistic
-- **Configurable** - Full control over generation parameters
-- **Offline Operation** - Works completely offline with local models
+### **🔥 Two Advanced Nodes:**
+- **Prompt Builder (Local LLM)** - Works with local AI models (Ollama, LM Studio, etc.)
+- **Prompt Builder (Online LLM)** - Supports major online APIs (OpenAI, Claude, Gemini, etc.)
+
+### **💎 Complete Feature Set:**
+- **Full Model Support** - SDXL, Pony, Flux, Illustrious, NoobAI, MidJourney, and more
+- **Advanced Character Controls** - Gender, age, body type, ethnicity, and detailed attributes
+- **NSFW Support** - Three modes: Off, NSFW, Hardcore with granular controls
+- **Style System** - Realistic (Professional/Amateur/Flash) and Anime (Ghibli/Naruto/Bleach)
+- **Preset System** - Shot, Pose, Location, and Clothing presets
+- **Quality Tags** - Automatic model-specific quality enhancement
+- **BREAK Support** - Smart token insertion for compatible models
+- **Model-Specific Formatting** - Optimized output for each target model
 
 ## 📦 Installation
 
@@ -60,40 +68,120 @@ Any OpenAI-compatible API (LocalAI, text-generation-webui, etc.)
 
 ## 🎯 Usage
 
-### Basic Usage
+### **🔧 Node Selection**
 
-1. **Add Node** - In ComfyUI, add "Prompt Builder (Local LLM)" node
-2. **Configure Connection:**
-   - **API URL**: `http://127.0.0.1:1234` (for LM Studio)
-   - **Model Name**: `mistral` or your model name
-3. **Enter Description**: "A beautiful sunset over mountains"
-4. **Select Style**: photorealistic/anime/artistic
-5. **Run** - Node will generate enhanced prompts
+**Choose the right node for your setup:**
+- **Prompt Builder (Local LLM)** - For Ollama, LM Studio, or other local APIs
+- **Prompt Builder (Online LLM)** - For OpenAI, Claude, Gemini, and other cloud APIs
 
-### Input Parameters
+### **⚡ Quick Start**
 
-| Parameter | Type | Default | Description |
+#### **Local LLM Node:**
+1. Add "Prompt Builder (Local LLM)" to your workflow
+2. Configure:
+   - **API URL**: `http://127.0.0.1:1234` (LM Studio) or `http://127.0.0.1:11434` (Ollama)
+   - **Model Name**: Your local model (e.g., `mistral`, `llama2`)
+   - **Target Model**: Choose your image generation model (SDXL, Pony, etc.)
+3. Set description and run!
+
+#### **Online LLM Node:**
+1. Add "Prompt Builder (Online LLM)" to your workflow
+2. Configure:
+   - **API Provider**: Choose from OpenAI, Claude, Gemini, etc.
+   - **API Key**: Your provider's API key
+   - **Target Model**: Choose your image generation model
+3. Set description and run!
+
+### **🎨 Advanced Configuration**
+
+#### **Core Parameters**
+| Parameter | Type | Options | Description |
 |-----------|------|---------|-------------|
-| `description` | STRING | "A beautiful sunset..." | Basic scene description |
-| `api_url` | STRING | "http://127.0.0.1:1234" | Local LLM API URL |
-| `model_name` | STRING | "dolphin-2.7-mixtral-8x7b" | Model name |
-| `style_filter` | CHOICE | "photorealistic" | Style: photorealistic/anime/artistic |
-| `num_variations` | INT | 3 | Number of variations (1-10) |
-| `api_key` | STRING | "" | API Key (optional) |
-| `temperature` | FLOAT | 0.7 | Creativity (0.1-2.0) |
-| `max_tokens` | INT | 2000 | Maximum response length |
+| `description` | STRING | - | Your creative prompt |
+| `target_model` | CHOICE | SDXL, Pony, Flux, etc. | Target image generation model |
+| `style_main` | CHOICE | realistic, anime | Main style category |
+| `style_sub` | CHOICE | professional, amateur, flash, ghibli, etc. | Sub-style refinement |
+| `num_variations` | INT | 1-10 | Number of prompt variations |
 
-### Outputs
+#### **🔞 NSFW Controls**
+| Parameter | Type | Options | Description |
+|-----------|------|---------|-------------|
+| `nsfw_mode` | CHOICE | off, nsfw, hardcore | Content rating level |
+| `nsfw_level` | INT | 1-10 | NSFW intensity |
+| `hardcore_level` | INT | 1-10 | Hardcore content intensity |
+| `enhance_person` | BOOLEAN | - | Enhance character descriptions |
+| `enhance_pose` | BOOLEAN | - | Enhance pose descriptions |
+| `enhance_location` | BOOLEAN | - | Enhance location descriptions |
+| `ai_imagination` | BOOLEAN | - | Allow AI creative additions |
 
-- **positive_prompt** - Detailed positive prompt
+#### **👤 Character Settings**
+| Parameter | Type | Options | Description |
+|-----------|------|---------|-------------|
+| `gender` | CHOICE | any, male, female, mixed | Character gender |
+| `age_range` | CHOICE | any, 18s, 25s, 30s, 40s, 50s, 60s, 70+ | Age range |
+| `body_type` | CHOICE | any, slim, curvy, athletic, etc. | Body type |
+| `ethnicity` | CHOICE | any, caucasian, asian, african, etc. | Ethnicity |
+| `height_range` | CHOICE | any, short, average, tall, etc. | Height range |
+
+#### **🚺 Female-Specific**
+- `breast_size`: any, flat, small, medium, large, huge, gigantic
+- `hips_size`: any, narrow, average, wide, extra wide
+- `butt_size`: any, flat, small, average, large, bubble
+
+#### **🚹 Male-Specific**
+- `penis_size`: any, small, average, large, huge, horse-hung
+- `muscle_definition`: any, soft, toned, defined, ripped, bodybuilder
+- `facial_hair`: any, clean-shaven, stubble, goatee, mustache, full beard
+
+#### **🎬 Preset System**
+| Parameter | Type | Examples | Description |
+|-----------|------|----------|-------------|
+| `shot_presets` | STRING | "close-up, portrait" | Camera shot types |
+| `pose_presets` | STRING | "standing, confident" | Character poses |
+| `location_presets` | STRING | "studio, outdoor" | Scene locations |
+| `clothing_presets` | STRING | "casual, elegant" | Clothing styles |
+
+### **📤 Outputs**
+
+- **positive_prompt** - Enhanced positive prompt with quality tags
 - **negative_prompt** - Negative prompt (elements to avoid)
-- **enhanced_description** - Extended scene description
+- **enhanced_description** - AI-enhanced scene description
+- **formatted_prompt** - Model-specific formatted prompt (NEW!)
 
-## 🔗 Example Workflow
+## 🔗 Example Workflows
+
+### **🎨 Dual-Style Workflow (Realistic + Anime)**
 
 ```
-[Prompt Builder Node] → [CLIP Text Encode] → [KSampler] → [VAE Decode] → [Save Image]
-                    ↘ [CLIP Text Encode (Negative)]
+[Prompt Builder Local] → [CLIP Text Encode] → [KSampler SDXL] → [VAE Decode] → [Save Realistic]
+                      ↘ [CLIP Text Encode (Neg)]
+
+[Prompt Builder Online] → [CLIP Text Encode] → [KSampler Illustrious] → [VAE Decode] → [Save Anime]
+                       ↘ [CLIP Text Encode (Neg)]
+```
+
+### **🔥 Advanced Features Showcase**
+
+```
+Prompt Builder (Local LLM):
+├── Description: "A majestic dragon flying over a medieval castle"
+├── Target Model: SDXL
+├── Style: Realistic → Professional
+├── Shot Presets: "wide shot, cinematic"
+├── Location Presets: "castle, medieval"
+├── Quality Tags: Enabled
+├── BREAK Support: Enabled
+└── Outputs: Enhanced prompts optimized for SDXL
+
+Prompt Builder (Online LLM):
+├── Description: "A beautiful anime girl in a magical forest"
+├── API Provider: OpenAI GPT-4
+├── Target Model: Illustrious
+├── Style: Anime → Ghibli
+├── Character: Female, 25s, Japanese
+├── Pose Presets: "standing, graceful"
+├── Clothing Presets: "fantasy, elegant"
+└── Outputs: Enhanced prompts optimized for Illustrious
 ```
 
 ## ⚙️ Advanced Configuration
