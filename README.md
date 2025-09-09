@@ -1,4 +1,4 @@
-# 🎨 Prompt Builder - Advanced AI Prompt Generation
+# Prompt Builder - Advanced AI Prompt Generation
 
 > **Professional-grade prompt generation for AI image creation with intelligent batch processing, anime styles, and advanced randomization**
 
@@ -7,64 +7,64 @@
 [![License](https://img.shields.io/github/license/btitkin/promptbuilder?style=for-the-badge)](https://github.com/btitkin/promptbuilder/blob/main/LICENSE)
 [![ComfyUI](https://img.shields.io/badge/ComfyUI-Compatible-brightgreen?style=for-the-badge)](https://github.com/comfyanonymous/ComfyUI)
 
-## 🌟 What is Prompt Builder?
+## Overview
 
 **Prompt Builder** is the most advanced AI prompt generation system available, designed for creators who demand professional results. Whether you're using the **standalone web application** or the **ComfyUI integration**, you get the same powerful features that transform simple descriptions into detailed, high-quality prompts.
 
 ---
 
-## 🚀 Choose Your Version
+## Choose Your Version
 
-### 📱 **Standalone Web Application** (Main Branch)
+### **Standalone Web Application** (Main Branch)
 > Perfect for direct use, privacy-focused local processing, and development
 
-- **🌐 Beautiful Web Interface** - Modern, responsive React-based UI
-- **🔒 Complete Privacy** - All processing happens locally on your machine
-- **🧠 Local LLM Integration** - Works with Ollama, LM Studio, Text Generation WebUI
-- **⚡ Real-time Generation** - Instant prompt creation and live preview
-- **🎨 Advanced Character Builder** - Detailed customization with live preview
-- **🎌 20+ Anime Styles** - From Studio Ghibli to modern anime
-- **🔄 Intelligent Batch Processing** - Generate 1-100 prompts with smart randomization
-- **💾 History & Favorites** - Save and manage your best prompts
-- **🔧 Developer Ready** - Full TypeScript/React source code
-- **📊 Built-in Analytics** - Prompt analysis and optimization suggestions
-- **🚀 Multiple Deployment Options** - Web app, Electron desktop, or Docker
+- **Beautiful Web Interface** - Modern, responsive React-based UI
+- **Complete Privacy** - All processing happens locally on your machine
+- **Local LLM Integration** - Works with Ollama, LM Studio, Text Generation WebUI
+- **Real-time Generation** - Instant prompt creation and live preview
+- **Advanced Character Builder** - Detailed customization with live preview
+- **20+ Anime Styles** - From Studio Ghibli to modern anime
+- **Intelligent Batch Processing** - Generate 1-100 prompts with smart randomization
+- **History & Favorites** - Save and manage your best prompts
+- **Developer Ready** - Full TypeScript/React source code
+- **Built-in Analytics** - Prompt analysis and optimization suggestions
+- **Multiple Deployment Options** - Web app, Electron desktop, or Docker
 
-**[📥 Download Standalone App](https://github.com/btitkin/promptbuilder/archive/refs/heads/main.zip)**
+**[Download Standalone App](https://github.com/btitkin/promptbuilder/archive/refs/heads/main.zip)**
 
-### 🎛️ **ComfyUI Integration** (ComfyUI-Node Branch)
+### **ComfyUI Integration** (ComfyUI-Node Branch)
 > Seamless integration with your ComfyUI workflows
 
-- **🔗 Native Integration** - Works directly in ComfyUI
-- **🎯 Workflow Ready** - Drag & drop nodes
-- **🔄 Batch Processing** - Generate 1-100 prompts at once
-- **🎌 Anime Styles** - 20+ specific anime art styles
+- **Native Integration** - Works directly in ComfyUI
+- **Workflow Ready** - Drag & drop nodes
+- **Batch Processing** - Generate 1-100 prompts at once
+- **Anime Styles** - 20+ specific anime art styles
 
-**[🎛️ Install ComfyUI Nodes](#-comfyui-installation)**
+**[Install ComfyUI Nodes](#comfyui-installation)**
 
 ---
 
-## ✨ Core Features (Both Versions)
+## Core Features (Both Versions)
 
-### **🧠 Intelligent AI Generation:**
+### **Intelligent AI Generation**
 - **Local LLM Support** - Ollama, LM Studio, Text Generation WebUI
 - **Online APIs** - OpenAI, Claude, Gemini, Groq, DeepSeek, and more
 - **Smart Prompting** - Context-aware prompt enhancement
 - **Model Optimization** - Tailored for each AI model
 
-### **🎯 Advanced Character Control:**
+### **Advanced Character Control**
 - **Physical Attributes** - Gender, age, body type, ethnicity
 - **Detailed Customization** - Height, build, facial features
 - **NSFW Support** - Three modes with granular control
 - **Preserved Traits** - Custom features that never change
 
-### **🎨 Professional Style System:**
+### **Professional Style System**
 - **Realistic Styles** - Professional, amateur, flash photography
 - **Anime Styles** - 20+ specific styles (Ghibli, Naruto, Bleach, etc.)
 - **Dynamic Selection** - Context-aware style options
 - **Quality Enhancement** - Automatic model-specific tags
 
-### **🔄 Intelligent Batch Processing:**
+### **Intelligent Batch Processing**
 - **Smart Randomization** - Fixed vs. variable elements
 - **Batch Generation** - 1-100 prompts with one click
 - **Character Consistency** - Same person, different scenarios
@@ -72,7 +72,7 @@
 
 ---
 
-## 🎛️ ComfyUI Installation
+## ComfyUI Installation
 
 ### **Method 1: ComfyUI Manager (Recommended)**
 
@@ -98,65 +98,65 @@ pip install -r requirements.txt
 # Restart ComfyUI
 ```
 
-## 🎯 ComfyUI Nodes Overview
+## ComfyUI Nodes Overview
 
-### **🔥 Available Nodes:**
+### **Available Nodes**
 
-#### **🧠 Main Generation Nodes:**
+#### **Main Generation Nodes**
 - **Prompt Builder (Local LLM)** - Works with local AI models (Ollama, LM Studio, etc.)
 - **Prompt Builder (Online LLM)** - Supports major online APIs (OpenAI, Claude, Gemini, etc.)
-- **⚡ Quick Preset & Batch** - Simplified interface with batch processing
+- **Quick Preset & Batch** - Simplified interface with batch processing
 
-#### **📊 Display & Utility Nodes:**
-- **📝 Prompt Text Display** - Shows prompts in ComfyUI interface
-- **📄 Show Text** - Display any text directly in nodes
-- **🎯 Prompt Selector** - Choose and customize specific outputs
-- **📊 Prompt Display & Stats** - Formatted display with statistics
+#### **Display & Utility Nodes**
+- **Prompt Text Display** - Shows prompts in ComfyUI interface
+- **Show Text** - Display any text directly in nodes
+- **Prompt Selector** - Choose and customize specific outputs
+- **Prompt Display & Stats** - Formatted display with statistics
 
-### **💎 Complete Feature Set:**
-- **🎨 Model Support** - SDXL, Pony, Flux, Illustrious, NoobAI, MidJourney, and more
-- **👤 Character Controls** - Gender, age, body type, ethnicity, detailed attributes
-- **🔞 NSFW Support** - Three modes: Off, NSFW, Hardcore with granular controls
-- **🎌 Anime Styles** - 20+ specific styles (Ghibli, Naruto, Bleach, One Piece, etc.)
-- **🎯 Preset System** - Shot, Pose, Location, and Clothing presets
-- **✨ Quality Tags** - Automatic model-specific enhancement
-- **🔄 Batch Processing** - Generate 1-100 prompts with intelligent randomization
-- **🎲 Smart Randomization** - Fixed character + variable scenes
-- **💾 Performance Caching** - Faster generation with smart caching
+### **Complete Feature Set**
+- **Model Support** - SDXL, Pony, Flux, Illustrious, NoobAI, MidJourney, and more
+- **Character Controls** - Gender, age, body type, ethnicity, detailed attributes
+- **NSFW Support** - Three modes: Off, NSFW, Hardcore with granular controls
+- **Anime Styles** - 20+ specific styles (Ghibli, Naruto, Bleach, One Piece, etc.)
+- **Preset System** - Shot, Pose, Location, and Clothing presets
+- **Quality Tags** - Automatic model-specific enhancement
+- **Batch Processing** - Generate 1-100 prompts with intelligent randomization
+- **Smart Randomization** - Fixed character + variable scenes
+- **Performance Caching** - Faster generation with smart caching
 
 ---
 
-## 📱 Standalone Web Application
+## Standalone Web Application
 
-### **🌟 Key Features:**
+### **Key Features**
 
-#### **🔒 Privacy-First Design:**
+#### **Privacy-First Design**
 - **100% Local Processing** - No data sent to external servers
 - **Offline Capable** - Works without internet connection
 - **Your Data Stays Yours** - Complete control over your prompts and settings
 
-#### **🧠 Advanced Local LLM Integration:**
+#### **Advanced Local LLM Integration**
 - **Ollama Support** - Direct integration with Ollama models
 - **LM Studio Compatible** - Works with LM Studio's OpenAI API
 - **Text Generation WebUI** - Supports oobabooga's text-generation-webui
 - **Custom APIs** - Any OpenAI-compatible local API
 - **Model Flexibility** - Use any model size that fits your hardware
 
-#### **🎨 Professional Prompt Engineering:**
+#### **Professional Prompt Engineering**
 - **Smart Character Builder** - Detailed physical and personality traits
 - **Style System** - Realistic photography + 20+ anime art styles
 - **Quality Enhancement** - Automatic model-specific optimization
 - **Batch Generation** - Create 1-100 variations with intelligent randomization
 - **Preset Library** - Pre-built combinations for common scenarios
 
-#### **💻 Developer Experience:**
+#### **Developer Experience**
 - **Modern Tech Stack** - React 18, TypeScript, Vite
 - **Component Library** - Reusable UI components
 - **API Abstraction** - Easy to add new LLM providers
 - **Hot Reload** - Instant development feedback
 - **Build Optimization** - Production-ready builds
 
-### **🚀 Quick Start Guide:**
+### **Quick Start Guide**
 
 #### **Step 1: Clone and Install**
 ```bash
@@ -218,9 +218,9 @@ npm run preview
 4. Select your model name
 5. Test connection and start generating!
 
-### **📦 Deployment Options:**
+### **Deployment Options**
 
-#### **🖥️ Desktop Application (Electron)**
+#### **Desktop Application (Electron)**
 ```bash
 # Build desktop app
 npm run electron:build
@@ -229,7 +229,7 @@ npm run electron:build
 npm run electron:dev
 ```
 
-#### **🐳 Docker Deployment**
+#### **Docker Deployment**
 ```bash
 # Build Docker image
 docker build -t promptbuilder .
@@ -238,7 +238,7 @@ docker build -t promptbuilder .
 docker run -p 3000:3000 promptbuilder
 ```
 
-#### **☁️ Static Hosting**
+#### **Static Hosting**
 ```bash
 # Build for static hosting
 npm run build
@@ -247,7 +247,7 @@ npm run build
 # Upload the 'dist' folder
 ```
 
-### **🔧 Configuration Options:**
+### **Configuration Options**
 
 #### **Environment Variables:**
 ```bash
@@ -268,9 +268,9 @@ export const customApiService = {
 }
 ```
 
-## 🎯 Example Use Cases
+## Example Use Cases
 
-### **🎨 Character Consistency:**
+### **Character Consistency**
 ```
 Input: "A beautiful woman"
 Settings: Fixed (female, 25s, curvy, blonde hair, green eyes)
@@ -278,7 +278,7 @@ Batch: 100 prompts with random locations/poses
 Result: Same woman in 100 different scenarios
 ```
 
-### **🎌 Anime Style Exploration:**
+### **Anime Style Exploration**
 ```
 Style: Anime → Ghibli
 Result: "Studio Ghibli style - soft, detailed, magical atmosphere"
@@ -287,7 +287,7 @@ Style: Anime → Naruto
 Result: "Naruto anime style - dynamic action poses, ninja themes"
 ```
 
-### **🔄 Smart Batch Processing:**
+### **Smart Batch Processing**
 ```
 Batch Count: 50
 Mode: Fixed Character
@@ -298,9 +298,9 @@ Result: 50 unique scenes with consistent character
 
 ---
 
-## 🛠️ Technical Details
+## Technical Details
 
-### **🔧 Supported Models:**
+### **Supported Models**
 - **SDXL** - Stable Diffusion XL
 - **Pony** - Pony Diffusion V6
 - **Flux** - Black Forest Labs Flux
@@ -309,11 +309,11 @@ Result: 50 unique scenes with consistent character
 - **SD 1.5** - Classic Stable Diffusion
 - **MidJourney** - MidJourney-optimized prompts
 
-### **🤖 AI Providers:**
+### **AI Providers**
 - **Local:** Ollama, LM Studio, Text Generation WebUI, Kobold AI
 - **Online:** OpenAI, Claude, Google Gemini, Groq, DeepSeek, Together AI
 
-### **📊 Performance:**
+### **Performance**
 - **Single Prompt:** ~1-3 seconds
 - **Batch (100):** ~2-5 minutes (with caching)
 - **Memory Usage:** <100MB
@@ -321,53 +321,53 @@ Result: 50 unique scenes with consistent character
 
 ---
 
-## 📚 Documentation & Support
+## Documentation & Support
 
-### **📖 Resources:**
-- **[📋 Example Workflows](./workflows/)** - Ready-to-use ComfyUI workflows
-- **[🎯 API Documentation](./docs/api.md)** - Complete API reference
-- **[🔧 Configuration Guide](./docs/config.md)** - Setup and customization
-- **[🎨 Style Guide](./docs/styles.md)** - All available styles and presets
+### **Resources**
+- **[Example Workflows](./workflows/)** - Ready-to-use ComfyUI workflows
+- **[API Documentation](./docs/api.md)** - Complete API reference
+- **[Configuration Guide](./docs/config.md)** - Setup and customization
+- **[Style Guide](./docs/styles.md)** - All available styles and presets
 
-### **💬 Community & Support:**
-- **[🐛 Report Issues](https://github.com/btitkin/promptbuilder/issues)** - Bug reports and feature requests
-- **[💡 Discussions](https://github.com/btitkin/promptbuilder/discussions)** - Community discussions
-- **[📧 Contact](mailto:support@promptbuilder.ai)** - Direct support
+### **Community & Support**
+- **[Report Issues](https://github.com/btitkin/promptbuilder/issues)** - Bug reports and feature requests
+- **[Discussions](https://github.com/btitkin/promptbuilder/discussions)** - Community discussions
+- **[Contact](mailto:support@promptbuilder.ai)** - Direct support
 
-### **🤝 Contributing:**
-- **[🔀 Pull Requests](https://github.com/btitkin/promptbuilder/pulls)** - Code contributions welcome
-- **[📝 Documentation](./CONTRIBUTING.md)** - Contribution guidelines
-- **[🎨 Style Guide](./docs/development.md)** - Development standards
+### **Contributing**
+- **[Pull Requests](https://github.com/btitkin/promptbuilder/pulls)** - Code contributions welcome
+- **[Documentation](./CONTRIBUTING.md)** - Contribution guidelines
+- **[Style Guide](./docs/development.md)** - Development standards
 
 ---
 
-## 📄 License & Credits
+## License & Credits
 
-### **📜 License:**
+### **License**
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
-### **🙏 Acknowledgments:**
+### **Acknowledgments**
 - **ComfyUI Team** - For the amazing ComfyUI framework
 - **Stability AI** - For Stable Diffusion models
 - **Community Contributors** - For feedback, testing, and improvements
 - **AI Model Creators** - For the incredible AI models we support
 
-### **⭐ Show Your Support:**
+### **Show Your Support**
 If you find Prompt Builder useful, please consider:
-- ⭐ **Starring** this repository
-- 🍴 **Forking** for your own projects
-- 📢 **Sharing** with the community
-- 🐛 **Reporting** bugs and issues
-- 💡 **Suggesting** new features
+- **Starring** this repository
+- **Forking** for your own projects
+- **Sharing** with the community
+- **Reporting** bugs and issues
+- **Suggesting** new features
 
 ---
 
 <div align="center">
 
-**🎨 Made with ❤️ for the AI Art Community**
+**Made with ❤️ for the AI Art Community**
 
 *Transform your creative vision into perfect prompts*
 
-**[⬆️ Back to Top](#-prompt-builder---advanced-ai-prompt-generation)**
+**[Back to Top](#prompt-builder---advanced-ai-prompt-generation)**
 
 </div>
