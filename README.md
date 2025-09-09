@@ -4,9 +4,11 @@ A comprehensive ComfyUI integration for Prompt Builder featuring **two powerful 
 
 ## 🚀 Features
 
-### **🔥 Two Advanced Nodes:**
+### **🔥 Four Powerful Nodes:**
 - **Prompt Builder (Local LLM)** - Works with local AI models (Ollama, LM Studio, etc.)
 - **Prompt Builder (Online LLM)** - Supports major online APIs (OpenAI, Claude, Gemini, etc.)
+- **Prompt Display & Stats** - Shows generated prompts in readable format with statistics
+- **Prompt Selector & Customizer** - Choose and customize specific prompt outputs
 
 ### **💎 Complete Feature Set:**
 - **Full Model Support** - SDXL, Pony, Flux, Illustrious, NoobAI, MidJourney, and more
@@ -148,16 +150,76 @@ Any OpenAI-compatible API (LocalAI, text-generation-webui, etc.)
 - **enhanced_description** - AI-enhanced scene description
 - **formatted_prompt** - Model-specific formatted prompt (NEW!)
 
+### **👁️ Prompt Display & Stats Node**
+
+Perfect for visualizing AI-generated results!
+
+#### **Features:**
+- **Visual Display** - Shows all prompts in organized, readable format
+- **Statistics** - Word count, character count for each prompt type
+- **Multiple Modes** - Display all, positive only, negative only, or formatted only
+- **Clean Outputs** - Provides clean prompts ready for CLIP Text Encode
+
+#### **Parameters:**
+| Parameter | Type | Options | Description |
+|-----------|------|---------|-------------|
+| `display_mode` | CHOICE | all, positive_only, negative_only, formatted_only | What to display |
+| `add_separators` | BOOLEAN | - | Add section separators for clarity |
+| `show_stats` | BOOLEAN | - | Show word/character statistics |
+
+#### **Outputs:**
+- **display_text** - Formatted display of all prompts with stats
+- **positive_for_clip** - Clean positive prompt for CLIP Text Encode
+- **negative_for_clip** - Clean negative prompt for CLIP Text Encode
+
+### **🎯 Prompt Selector & Customizer Node**
+
+Choose and customize the perfect prompt for your needs!
+
+#### **Features:**
+- **Smart Selection** - Choose between positive, formatted, or enhanced prompts
+- **Custom Additions** - Add custom prefix and suffix text
+- **Quality Tag Control** - Remove quality tags if needed
+- **Clean Output** - Properly formatted for CLIP Text Encode
+
+#### **Parameters:**
+| Parameter | Type | Options | Description |
+|-----------|------|---------|-------------|
+| `output_selection` | CHOICE | positive, formatted, enhanced | Which prompt to use |
+| `custom_prefix` | STRING | - | Text to add at the beginning |
+| `custom_suffix` | STRING | - | Text to add at the end |
+| `remove_quality_tags` | BOOLEAN | - | Remove quality tags from output |
+
+#### **Outputs:**
+- **selected_positive** - Customized positive prompt ready for CLIP
+- **selected_negative** - Negative prompt (unchanged)
+
 ## 🔗 Example Workflows
 
-### **🎨 Dual-Style Workflow (Realistic + Anime)**
+### **🎨 Complete Workflow with Display & Selection**
 
 ```
-[Prompt Builder Local] → [CLIP Text Encode] → [KSampler SDXL] → [VAE Decode] → [Save Realistic]
-                      ↘ [CLIP Text Encode (Neg)]
+[Prompt Builder Local] → [Prompt Display] → [Prompt Selector] → [CLIP Text Encode] → [KSampler SDXL]
+                      ↘ [Show Stats & Results]              ↘ [CLIP Text Encode (Neg)]
 
-[Prompt Builder Online] → [CLIP Text Encode] → [KSampler Illustrious] → [VAE Decode] → [Save Anime]
-                       ↘ [CLIP Text Encode (Neg)]
+[Prompt Builder Online] → [Prompt Display] → [Prompt Selector] → [CLIP Text Encode] → [KSampler Illustrious]
+                       ↘ [Show Stats & Results]              ↘ [CLIP Text Encode (Neg)]
+```
+
+### **👁️ Visual Workflow Benefits**
+
+```
+Prompt Builder → Prompt Display Node:
+├── 📊 Shows all 4 outputs with statistics
+├── 📝 Readable format with separators
+├── 🔢 Word/character counts
+└── 👀 User can see exactly what AI generated
+
+Prompt Display → Prompt Selector Node:
+├── 🎯 Choose best prompt (positive/formatted/enhanced)
+├── ✏️ Add custom prefix/suffix
+├── 🏷️ Remove quality tags if needed
+└── 🔗 Clean output ready for CLIP Text Encode
 ```
 
 ### **🔥 Advanced Features Showcase**

@@ -822,13 +822,235 @@ class PromptBuilderOnlineNode:
             print(f"PromptBuilder Online Node Error: {error_msg}")
             return (description, 'blurry, low quality, distorted', error_msg, description)
 
+class PromptDisplayNode:
+    """
+    Display Node for Prompt Builder - Shows generated prompts in readable format
+    """
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "positive_prompt": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+                "negative_prompt": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+                "enhanced_description": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+                "formatted_prompt": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+            },
+            "optional": {
+                "display_mode": (["all", "positive_only", "negative_only", "formatted_only"], {
+                    "default": "all"
+                }),
+                "add_separators": ("BOOLEAN", {
+                    "default": True
+                }),
+                "show_stats": ("BOOLEAN", {
+                    "default": True
+                }),
+            }
+        }
+    
+    RETURN_TYPES = ("STRING", "STRING", "STRING")
+    RETURN_NAMES = ("display_text", "positive_for_clip", "negative_for_clip")
+    FUNCTION = "display_prompts"
+    CATEGORY = "PromptBuilder"
+    DESCRIPTION = "Display and format Prompt Builder results for easy viewing and CLIP connection"
+    
+    def display_prompts(self, positive_prompt: str, negative_prompt: str, 
+                       enhanced_description: str, formatted_prompt: str,
+                       display_mode: str = "all", add_separators: bool = True, 
+                       show_stats: bool = True) -> Tuple[str, str, str]:
+        """
+        Display prompts in readable format
+        """
+        try:
+            # Prepare display text based on mode
+            display_parts = []
+            
+            if display_mode in ["all", "positive_only"]:
+                if add_separators:
+                    display_parts.append("=== POSITIVE PROMPT ===")
+                display_parts.append(positive_prompt)
+                
+                if show_stats:
+                    pos_words = len(positive_prompt.split())
+                    pos_chars = len(positive_prompt)
+                    display_parts.append(f"[Stats: {pos_words} words, {pos_chars} characters]")
+                
+                if add_separators and display_mode == "all":
+                    display_parts.append("")
+            
+            if display_mode in ["all", "negative_only"]:
+                if add_separators:
+                    display_parts.append("=== NEGATIVE PROMPT ===")
+                display_parts.append(negative_prompt)
+                
+                if show_stats:
+                    neg_words = len(negative_prompt.split())
+                    neg_chars = len(negative_prompt)
+                    display_parts.append(f"[Stats: {neg_words} words, {neg_chars} characters]")
+                
+                if add_separators and display_mode == "all":
+                    display_parts.append("")
+            
+            if display_mode in ["all", "formatted_only"]:
+                if add_separators:
+                    display_parts.append("=== FORMATTED PROMPT ===")
+                display_parts.append(formatted_prompt)
+                
+                if show_stats:
+                    fmt_words = len(formatted_prompt.split())
+                    fmt_chars = len(formatted_prompt)
+                    display_parts.append(f"[Stats: {fmt_words} words, {fmt_chars} characters]")
+                
+                if add_separators and display_mode == "all":
+                    display_parts.append("")
+            
+            if display_mode == "all":
+                if add_separators:
+                    display_parts.append("=== ENHANCED DESCRIPTION ===")
+                display_parts.append(enhanced_description)
+                
+                if show_stats:
+                    desc_words = len(enhanced_description.split())
+                    desc_chars = len(enhanced_description)
+                    display_parts.append(f"[Stats: {desc_words} words, {desc_chars} characters]")
+            
+            # Join all parts
+            display_text = "\n".join(display_parts)
+            
+            # Return display text and clean prompts for CLIP
+            return (display_text, positive_prompt, negative_prompt)
+            
+        except Exception as e:
+            error_msg = f"Error displaying prompts: {str(e)}"
+            print(f"PromptDisplay Node Error: {error_msg}")
+            return (error_msg, positive_prompt, negative_prompt)
+
+class PromptSelectorNode:
+    """
+    Selector Node for Prompt Builder - Choose between different prompt outputs
+    """
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "positive_prompt": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+                "negative_prompt": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+                "enhanced_description": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+                "formatted_prompt": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+                "output_selection": (["positive", "formatted", "enhanced"], {
+                    "default": "formatted"
+                }),
+            },
+            "optional": {
+                "custom_prefix": ("STRING", {
+                    "default": "",
+                    "placeholder": "Custom prefix to add..."
+                }),
+                "custom_suffix": ("STRING", {
+                    "default": "",
+                    "placeholder": "Custom suffix to add..."
+                }),
+                "remove_quality_tags": ("BOOLEAN", {
+                    "default": False
+                }),
+            }
+        }
+    
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("selected_positive", "selected_negative")
+    FUNCTION = "select_prompt"
+    CATEGORY = "PromptBuilder"
+    DESCRIPTION = "Select and customize specific prompt output from Prompt Builder"
+    
+    def select_prompt(self, positive_prompt: str, negative_prompt: str,
+                     enhanced_description: str, formatted_prompt: str,
+                     output_selection: str = "formatted", custom_prefix: str = "",
+                     custom_suffix: str = "", remove_quality_tags: bool = False) -> Tuple[str, str]:
+        """
+        Select and customize prompt output
+        """
+        try:
+            # Select the appropriate prompt
+            if output_selection == "positive":
+                selected = positive_prompt
+            elif output_selection == "formatted":
+                selected = formatted_prompt
+            elif output_selection == "enhanced":
+                selected = enhanced_description
+            else:
+                selected = positive_prompt
+            
+            # Remove quality tags if requested
+            if remove_quality_tags:
+                # Remove common quality tags
+                quality_tags = [
+                    "masterpiece", "best quality", "amazing quality", "photorealistic",
+                    "professional photography", "8k", "high detail", "sharp focus",
+                    "award-winning photograph", "anime screenshot", "absurdres"
+                ]
+                
+                for tag in quality_tags:
+                    selected = selected.replace(f"{tag}, ", "")
+                    selected = selected.replace(f", {tag}", "")
+                    selected = selected.replace(tag, "")
+                
+                # Clean up extra commas and spaces
+                selected = ", ".join([part.strip() for part in selected.split(",") if part.strip()])
+            
+            # Add custom prefix and suffix
+            if custom_prefix:
+                selected = f"{custom_prefix}, {selected}"
+            
+            if custom_suffix:
+                selected = f"{selected}, {custom_suffix}"
+            
+            # Clean up the final result
+            selected = selected.strip().strip(",").strip()
+            
+            return (selected, negative_prompt)
+            
+        except Exception as e:
+            error_msg = f"Error selecting prompt: {str(e)}"
+            print(f"PromptSelector Node Error: {error_msg}")
+            return (positive_prompt, negative_prompt)
+
 # Node registration
 NODE_CLASS_MAPPINGS = {
     "PromptBuilderLocalNode": PromptBuilderLocalNode,
-    "PromptBuilderOnlineNode": PromptBuilderOnlineNode
+    "PromptBuilderOnlineNode": PromptBuilderOnlineNode,
+    "PromptDisplayNode": PromptDisplayNode,
+    "PromptSelectorNode": PromptSelectorNode
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "PromptBuilderLocalNode": "Prompt Builder (Local LLM)",
-    "PromptBuilderOnlineNode": "Prompt Builder (Online LLM)"
+    "PromptBuilderOnlineNode": "Prompt Builder (Online LLM)",
+    "PromptDisplayNode": "Prompt Display & Stats",
+    "PromptSelectorNode": "Prompt Selector & Customizer"
 }

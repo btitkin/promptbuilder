@@ -326,5 +326,147 @@
     "_meta": {
       "title": "Formatted Prompt - Anime"
     }
+  },
+  "21": {
+    "inputs": {
+      "positive_prompt": [
+        "1",
+        0
+      ],
+      "negative_prompt": [
+        "1",
+        1
+      ],
+      "enhanced_description": [
+        "1",
+        2
+      ],
+      "formatted_prompt": [
+        "1",
+        3
+      ],
+      "display_mode": "all",
+      "add_separators": true,
+      "show_stats": true
+    },
+    "class_type": "PromptDisplayNode",
+    "_meta": {
+      "title": "Prompt Display - Realistic Results"
+    }
+  },
+  "22": {
+    "inputs": {
+      "positive_prompt": [
+        "10",
+        0
+      ],
+      "negative_prompt": [
+        "10",
+        1
+      ],
+      "enhanced_description": [
+        "10",
+        2
+      ],
+      "formatted_prompt": [
+        "10",
+        3
+      ],
+      "display_mode": "all",
+      "add_separators": true,
+      "show_stats": true
+    },
+    "class_type": "PromptDisplayNode",
+    "_meta": {
+      "title": "Prompt Display - Anime Results"
+    }
+  },
+  "23": {
+    "inputs": {
+      "positive_prompt": [
+        "1",
+        0
+      ],
+      "negative_prompt": [
+        "1",
+        1
+      ],
+      "enhanced_description": [
+        "1",
+        2
+      ],
+      "formatted_prompt": [
+        "1",
+        3
+      ],
+      "output_selection": "formatted",
+      "custom_prefix": "",
+      "custom_suffix": "",
+      "remove_quality_tags": false
+    },
+    "class_type": "PromptSelectorNode",
+    "_meta": {
+      "title": "Prompt Selector - Realistic"
+    }
+  },
+  "24": {
+    "inputs": {
+      "positive_prompt": [
+        "10",
+        0
+      ],
+      "negative_prompt": [
+        "10",
+        1
+      ],
+      "enhanced_description": [
+        "10",
+        2
+      ],
+      "formatted_prompt": [
+        "10",
+        3
+      ],
+      "output_selection": "formatted",
+      "custom_prefix": "",
+      "custom_suffix": "",
+      "remove_quality_tags": false
+    },
+    "class_type": "PromptSelectorNode",
+    "_meta": {
+      "title": "Prompt Selector - Anime"
+    }
+  },
+  "25": {
+    "inputs": {
+      "text": [
+        "23",
+        0
+      ],
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Selected Realistic)"
+    }
+  },
+  "26": {
+    "inputs": {
+      "text": [
+        "24",
+        0
+      ],
+      "clip": [
+        "12",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Selected Anime)"
+    }
   }
 }
