@@ -37,11 +37,24 @@
         "1",
         3
       ],
-      "show_in_ui": true
+      "show_in_ui": false
     },
     "class_type": "PromptTextDisplayNode",
     "_meta": {
-      "title": "📝 Text Display - Zobacz Rezultaty"
+      "title": "📝 Text Display - Przygotuj Tekst"
+    }
+  },
+  "11": {
+    "inputs": {
+      "text": [
+        "2",
+        2
+      ],
+      "title": "🎨 PROMPT BUILDER RESULTS"
+    },
+    "class_type": "ShowTextNode",
+    "_meta": {
+      "title": "📄 Show Results - Zobacz w Node"
     }
   },
   "3": {

@@ -132,9 +132,10 @@ class PromptBuilderLocalNode:
                     "default": "any"
                 }),
                 
-                # Male Specific
+                # Male Specific (hidden when gender is female)
                 "penis_size": (["any", "small", "average", "large", "huge", "horse-hung"], {
-                    "default": "any"
+                    "default": "any",
+                    "tooltip": "Only visible when gender is male or any"
                 }),
                 "muscle_definition": (["any", "soft", "toned", "defined", "ripped", "bodybuilder"], {
                     "default": "any"
@@ -700,9 +701,10 @@ class PromptBuilderOnlineNode:
                     "default": "any"
                 }),
                 
-                # Male Specific
+                # Male Specific (hidden when gender is female)
                 "penis_size": (["any", "small", "average", "large", "huge", "horse-hung"], {
-                    "default": "any"
+                    "default": "any",
+                    "tooltip": "Only visible when gender is male or any"
                 }),
                 "muscle_definition": (["any", "soft", "toned", "defined", "ripped", "bodybuilder"], {
                     "default": "any"
@@ -980,8 +982,8 @@ class PromptTextDisplayNode:
             }
         }
     
-    RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("positive_for_clip", "negative_for_clip")
+    RETURN_TYPES = ("STRING", "STRING", "STRING")
+    RETURN_NAMES = ("positive_for_clip", "negative_for_clip", "display_text")
     FUNCTION = "display_text"
     CATEGORY = "PromptBuilder"
     DESCRIPTION = "Display generated prompts as text in ComfyUI interface"
@@ -989,12 +991,30 @@ class PromptTextDisplayNode:
     
     def display_text(self, positive_prompt: str, negative_prompt: str, 
                     enhanced_description: str, formatted_prompt: str,
-                    show_in_ui: bool = True) -> Tuple[str, str]:
+                    show_in_ui: bool = True) -> Tuple[str, str, str]:
         """
         Display prompts as text in ComfyUI interface
         """
+        # Create formatted display text for the node output
+        display_parts = []
+        display_parts.append("🎨 PROMPT BUILDER RESULTS")
+        display_parts.append("=" * 50)
+        display_parts.append(f"📝 POSITIVE ({len(positive_prompt)} chars):")
+        display_parts.append(positive_prompt[:200] + "..." if len(positive_prompt) > 200 else positive_prompt)
+        display_parts.append("")
+        display_parts.append(f"❌ NEGATIVE ({len(negative_prompt)} chars):")
+        display_parts.append(negative_prompt[:100] + "..." if len(negative_prompt) > 100 else negative_prompt)
+        display_parts.append("")
+        display_parts.append(f"✨ ENHANCED ({len(enhanced_description)} chars):")
+        display_parts.append(enhanced_description[:200] + "..." if len(enhanced_description) > 200 else enhanced_description)
+        display_parts.append("")
+        display_parts.append(f"🎯 FORMATTED ({len(formatted_prompt)} chars):")
+        display_parts.append(formatted_prompt[:200] + "..." if len(formatted_prompt) > 200 else formatted_prompt)
+        
+        display_text = "\n".join(display_parts)
+        
+        # Optional console output
         if show_in_ui:
-            # This will be displayed in the ComfyUI interface
             print("\n" + "="*80)
             print("🎨 PROMPT BUILDER RESULTS")
             print("="*80)
@@ -1011,7 +1031,42 @@ class PromptTextDisplayNode:
             print(formatted_prompt)
             print("="*80 + "\n")
         
-        return (positive_prompt, negative_prompt)
+        return (positive_prompt, negative_prompt, display_text)
+
+class ShowTextNode:
+    """
+    Show Text Node - Displays text directly in ComfyUI interface
+    """
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "text": ("STRING", {
+                    "multiline": True,
+                    "forceInput": True
+                }),
+            },
+            "optional": {
+                "title": ("STRING", {
+                    "default": "Text Display",
+                    "placeholder": "Title for the display..."
+                }),
+            }
+        }
+    
+    RETURN_TYPES = ()
+    FUNCTION = "show_text"
+    CATEGORY = "PromptBuilder"
+    DESCRIPTION = "Display text directly in ComfyUI interface"
+    OUTPUT_NODE = True
+    
+    def show_text(self, text: str, title: str = "Text Display"):
+        """
+        Show text in ComfyUI interface
+        """
+        # This will be displayed in the ComfyUI interface
+        return {"ui": {"text": [f"{title}:\n{text}"]}}
 
 class PromptDisplayNode:
     """
@@ -1236,6 +1291,7 @@ NODE_CLASS_MAPPINGS = {
     "PromptBuilderLocalNode": PromptBuilderLocalNode,
     "PromptBuilderOnlineNode": PromptBuilderOnlineNode,
     "PromptTextDisplayNode": PromptTextDisplayNode,
+    "ShowTextNode": ShowTextNode,
     "PromptDisplayNode": PromptDisplayNode,
     "PromptSelectorNode": PromptSelectorNode
 }
@@ -1244,6 +1300,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PromptBuilderLocalNode": "Prompt Builder (Local LLM)",
     "PromptBuilderOnlineNode": "Prompt Builder (Online LLM)",
     "PromptTextDisplayNode": "📝 Prompt Text Display",
+    "ShowTextNode": "📄 Show Text",
     "PromptDisplayNode": "Prompt Display & Stats",
     "PromptSelectorNode": "Prompt Selector & Customizer"
 }
