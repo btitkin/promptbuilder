@@ -140,11 +140,11 @@ export const enhanceDescription = async (
   styleFilter: StyleFilter,
   characterSettings: CharacterSettingsState
 ): Promise<string> => {
-  const systemPrompt = 'You are an AI assistant that enhances image descriptions. Make the description more detailed and vivid while keeping the core meaning.';
+  const systemPrompt = 'You are an AI assistant that enhances image prompts for AI image generation. Improve the prompt by adding relevant visual details, style keywords, and quality tags. Keep it concise and comma-separated. Maximum 50 words.';
   
   const messages = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: `Enhance this description: ${userInput}` }
+    { role: 'user', content: `Enhance this image prompt for AI generation: ${userInput}. Add visual details and style keywords, keep it concise and comma-separated.` }
   ];
 
   try {
@@ -162,11 +162,11 @@ export const generateRandomDescription = async (
   characterSettings: CharacterSettingsState,
   selectedPresets: string[]
 ): Promise<string> => {
-  const systemPrompt = 'You are an AI assistant that generates creative image descriptions. Create an interesting and detailed description based on the given parameters.';
+  const systemPrompt = 'You are an AI assistant that generates concise image prompts for AI image generation (Stable Diffusion, Midjourney). Generate a short, comma-separated prompt with descriptive keywords and tags. Do NOT write stories or long descriptions. Focus on visual elements: subject, style, lighting, composition. Maximum 50 words.';
   
   const messages = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: `Generate a random creative description using these elements: ${selectedPresets.join(', ')}` }
+    { role: 'user', content: `Generate a concise image prompt using these elements: ${selectedPresets.join(', ')}. Format as comma-separated keywords for AI image generation.` }
   ];
 
   try {
