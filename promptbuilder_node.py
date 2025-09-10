@@ -629,18 +629,37 @@ Return a JSON object with:
             {"role": "user", "content": f"Create enhanced prompts for: {full_description}"}
         ]
         
-        response = self.make_api_call(config, messages)
-        
-        # Parse response
+        # Try to make API call, fallback to basic prompt if LLM is not available
         try:
-            result = json.loads(response)
-            positive_prompt = result.get('positive', full_description)
-            negative_prompt = result.get('negative', kwargs.get('negative_prompt', 'blurry, low quality, distorted'))
-            enhanced_description = result.get('enhanced_description', full_description)
-        except json.JSONDecodeError:
-            positive_prompt = response
-            negative_prompt = kwargs.get('negative_prompt', 'blurry, low quality, distorted')
-            enhanced_description = response
+            response = self.make_api_call(config, messages)
+            
+            # Parse response
+            try:
+                result = json.loads(response)
+                positive_prompt = result.get('positive', full_description)
+                negative_prompt = result.get('negative', kwargs.get('negative_prompt', 'blurry, low quality, distorted'))
+                enhanced_description = result.get('enhanced_description', full_description)
+            except json.JSONDecodeError:
+                positive_prompt = response
+                negative_prompt = kwargs.get('negative_prompt', 'blurry, low quality, distorted')
+                enhanced_description = response
+                
+        except Exception as api_error:
+            # LLM is not available - use fallback with basic prompt enhancement
+            print(f"⚠️ LLM API Error: {str(api_error)}")
+            print(f"🔄 Using fallback mode - basic prompt enhancement without LLM")
+            
+            # Create enhanced prompt using built-in logic without LLM
+            positive_prompt = full_description
+            negative_prompt = kwargs.get('negative_prompt', 'blurry, low quality, distorted, bad anatomy, worst quality')
+            enhanced_description = f"⚠️ LLM Offline - Basic Enhancement: {full_description}"
+            
+            # Add some basic enhancements based on style
+            if style_main == 'anime':
+                anime_style = kwargs.get('anime_style', 'ghibli')
+                positive_prompt = f"{anime_style} anime style, {positive_prompt}, detailed, high quality"
+            elif style_main == 'realistic':
+                positive_prompt = f"realistic, photographic, {positive_prompt}, detailed, high resolution"
         
         # Add quality tags if enabled
         if kwargs.get('quality_tags', True):
