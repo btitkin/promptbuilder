@@ -69,14 +69,64 @@ Return ONLY a JSON object with this structure:
     { role: 'user', content: `Generate ${numVariations} variations for: ${userInput}` }
   ];
 
+  console.log('🔍 DEBUG: generatePromptVariations called with config:', config.url);
+  console.log('🔍 DEBUG: User input:', userInput);
+  console.log('🔍 DEBUG: Num variations:', numVariations);
+  
   try {
     const response = await makeApiCall(config, messages);
-    const parsed = JSON.parse(response);
+    console.log('🔍 DEBUG: Raw LLM response:', response);
     
-    return {
-      structuredPrompts: parsed.prompts || [],
-      negativePrompt: parsed.negativePrompt || ''
-    };
+    // Try to parse as JSON first
+    try {
+      const parsed = JSON.parse(response);
+      return {
+        structuredPrompts: parsed.prompts || [],
+        negativePrompt: parsed.negativePrompt || ''
+      };
+    } catch (jsonError) {
+       console.log('🔍 DEBUG: JSON parsing failed, using fallback mode');
+       console.warn('Local LLM returned non-JSON response, creating fallback structured prompt:', response);
+      
+      // Fallback: Create structured prompt from plain text response
+      const fallbackPrompt: StructuredPrompt = {
+        subject: [userInput],
+        attributes: ['detailed', 'high quality'],
+        clothing: [],
+        pose: [],
+        action: [],
+        location: [],
+        background: [],
+        style: [styleFilter.style || 'professional']
+      };
+      
+      // Try to extract meaningful content from response
+      const cleanResponse = response.trim();
+      if (cleanResponse && cleanResponse.length > 10) {
+        // Use the LLM response as enhanced subject
+        fallbackPrompt.subject = [cleanResponse];
+      }
+      
+      // Generate multiple variations by adding different attributes
+      const variations: StructuredPrompt[] = [];
+      for (let i = 0; i < numVariations; i++) {
+        const variation = { ...fallbackPrompt };
+        
+        // Add variation-specific attributes
+        const variationAttributes = ['detailed', 'high quality'];
+        if (i === 1) variationAttributes.push('artistic', 'creative');
+        if (i === 2) variationAttributes.push('professional', 'polished');
+        if (i >= 3) variationAttributes.push('unique', 'expressive');
+        
+        variation.attributes = variationAttributes;
+        variations.push(variation);
+      }
+      
+      return {
+        structuredPrompts: variations,
+        negativePrompt: 'blurry, low quality, distorted, bad anatomy, worst quality'
+      };
+    }
   } catch (error) {
     console.error('Custom API error:', error);
     throw new Error('Failed to generate prompt variations with custom API');
