@@ -565,23 +565,29 @@ Return a JSON object with:
         """
         Generate enhanced prompts with full feature set and intelligent batch processing
         """
+        print(f"🔍 DEBUG: generate_prompts called - entry point")
         try:
             # Check if batch processing is enabled
             enable_batch = kwargs.get('enable_batch', False)
+            print(f"🔍 DEBUG: enable_batch = {enable_batch}")
             
             if enable_batch:
+                print(f"🔍 DEBUG: Calling generate_batch_with_smart_randomization")
                 return self.generate_batch_with_smart_randomization(
                     description, api_url, model_name, target_model, 
                     style_main, style_sub, num_variations, **kwargs
                 )
             else:
                 # Single prompt generation (original logic)
+                print(f"🔍 DEBUG: Calling generate_single_prompt")
                 return self.generate_single_prompt(
                     description, api_url, model_name, target_model,
                     style_main, style_sub, num_variations, **kwargs
                 )
                 
         except Exception as e:
+            print(f"🔍 DEBUG: OUTER EXCEPTION CAUGHT: {str(e)}")
+            print(f"🔍 DEBUG: This outer try-catch may be interfering with fallback behavior!")
             error_msg = f"❌ Prompt Generation Error: {str(e)}"
             return (error_msg, error_msg, error_msg, error_msg, error_msg)
     
@@ -590,6 +596,10 @@ Return a JSON object with:
         """
         Generate single prompt (original functionality)
         """
+        # DEBUG: Log entry point
+        print(f"🔍 DEBUG: generate_single_prompt called with API URL: {api_url}")
+        print(f"🔍 DEBUG: Description: {description}")
+        
         # Build character description
         character_desc = self.build_character_description(**kwargs)
         
@@ -630,8 +640,10 @@ Return a JSON object with:
         ]
         
         # Try to make API call, fallback to basic prompt if LLM is not available
+        print(f"🔍 DEBUG: About to call make_api_call with config: {config['api_url']}")
         try:
             response = self.make_api_call(config, messages)
+            print(f"🔍 DEBUG: API call successful, response length: {len(response)}")
             
             # Parse response
             try:
@@ -646,6 +658,7 @@ Return a JSON object with:
                 
         except Exception as api_error:
             # LLM is not available - use fallback with basic prompt enhancement
+            print(f"🔍 DEBUG: ENTERED FALLBACK EXCEPTION HANDLER")
             print(f"⚠️ LLM API Error: {str(api_error)}")
             print(f"🔄 Using fallback mode - basic prompt enhancement without LLM")
             
