@@ -25,3 +25,10 @@ dist-ssr
 
 # Portable build folder
 portable-app/
+
+# Large files (models, executables, release files)
+models/
+release/
+*.gguf
+*.exe
+*.asar
