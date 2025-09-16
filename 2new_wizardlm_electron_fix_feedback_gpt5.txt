@@ -1,0 +1,163 @@
+Masz to! Poniżej cały feedback w formie pliku TXT. Skopiuj blok i zapisz jako: wizardlm_random_metaassistant_fix.txt
+
+Temat: WizardLM generateRandomDescription – model pisze o „asystencie” zamiast opisu scen (przyczyny i naprawa)
+
+1) Objawy
+- Zamiast opisu sceny model generuje meta-instrukcje o asystencie:
+  "You are a helpful, respectful and honest assistant..."
+- Sporadycznie wraca poprawny opis (albo fallback prozą).
+
+2) Najbardziej prawdopodobne przyczyny
+A. Preamble (wstęp do promptu) nadal ma charakter „asystencki”
+   - TheBloke template u Ciebie: preamble = systemText || "A chat between a curious user..."
+   - Ten domyślny preamble (lub system prompt o „asystencie”) może aktywować u WizardLM schemat „assistant policy” znany z LLaMA-2 (tekst zaczynający się od "You are a helpful, respectful and honest assistant...").
+
+B. Reużywanie tej samej sekwencji kontekstu (contextSequence) bez pełnego resetu
+   - Tworzysz nową LlamaChatSession, ale używasz wciąż tego samego contextSequence.
+   - Jeśli sequence nie jest twardo czyszczona, wcześniejsze instrukcje mogą „przeciekać” do nowych zapytań.
+   - To może powodować, że model „pamięta” stylistykę/rolę asystenta i zaczyna każdą odpowiedź od meta-reguł.
+
+C. Drobne rozminięcie z natywnym chat_template modelu
+   - Wizard-Vicuna oczekuje prostego Vicuna v1.1 USER:/ASSISTANT: lub natywnego chat_template z GGUF.
+   - Wtrącanie opisu „chat between user and assistant” bywa błędne – nie jest to tożsame z <<SYS>> LLaMA-2.
+
+3) Odpowiedzi na Twoje pytania
+1. Dlaczego ignoruje system prompt i pisze o asystencie?
+   - Bo wstęp/preamble sugeruje mu „tryb asystenta”, a nie „opisz scenę”. To trigger dla wzorca LLaMA-2 policy.
+   - Jeśli kontekst nie jest zerowany, model może też powtarzać wcześniejsze schematy.
+
+2. Czy problem może być w TheBloke USER/ASSISTANT template?
+   - Sam format USER:/ASSISTANT: jest OK dla Vicuna, ale:
+     - Nie używaj „A chat between a curious user...” jako preamble.
+     - Nie mieszaj dodatkowych metainstrukcji o „asystencie”.
+   - Najprościej: w ogóle nie dawaj preamble – tylko USER: {instrukcja} i ASSISTANT:.
+
+3. Jak sprawić, by model skupił się na opisie sceny?
+   - Usuń „asystencki” preamble.
+   - Zawrzyj wszystkie reguły w USER: (lub w neutralnym systemText, ale nie „o asystencie”).
+   - Dodaj short few-shot (Bad vs Good) – pomaga utrzymać format prozy.
+
+4. Czy użyć innego podejścia do promptowania?
+   - Tak: „minimal Vicuna prompt” (bez preamble).
+   - Ewentualnie użyj natywnego chat_template z GGUF (apply_chat_template), jeśli node-llama-cpp na to pozwala.
+   - Jeżeli LlamaChatSession wtrąca własne rzeczy, rozważ przejście na gołe createCompletion z ręcznie złożonym promptem.
+
+5. Czy model „widzi” poprzednie instrukcje systemowe?
+   - Bardzo możliwe, jeśli contextSequence nie jest twardo resetowana/clearowana między wywołaniami.
+   - Samo dispose() sesji może nie czyścić sequence. Trzeba wyzerować/clearować sekwencję lub pobierać nową.
+
+4) Konkretne poprawki (kopiuj-wklej)
+
+A) customApiService.ts – zrezygnuj z „asystenckiego” preamble
+-------------------------------------------------------------
+Zmień buildTheBlokePrompt tak, aby:
+- Nie używać domyślnego preamble „A chat between…”.
+- Jeżeli systemText jest podany, potraktuj go jako neutralny kontekst (np. krótkie wytyczne), ale NIE opisuj roli asystenta.
+- W ostateczności: WCALE nie dawaj preamble – wszystko w USER:.
+
+Przykład minimalnego wariantu:
+  const buildTheBlokePrompt = (_systemText: string | undefined, userText: string): string => {
+    // Zero preamble. Tylko czysty dialog Vicuna.
+    return `USER: ${userText}\nASSISTANT: `;
+  };
+
+Jeśli chcesz jednak zachować systemText:
+  const buildTheBlokePrompt = (systemText: string | undefined, userText: string): string => {
+    const pre = (systemText && systemText.trim().length > 0) ? `${systemText.trim()}\n\n` : '';
+    // Uwaga: systemText musi być neutralny (bez „You are a helpful assistant…”)
+    return `${pre}USER: ${userText}\nASSISTANT: `;
+  };
+
+Upewnij się też, że STOP_SEQS nie zawiera ASSISTANT:, zostaje:
+  const STOP_SEQS = ['USER:', '\nUSER:', '\n\nUSER:'];
+
+B) generateRandomDescription – przenieś całą specyfikę do USER:
+---------------------------------------------------------------
+Zastąp systemPrompt neutralnym lub pustym (albo w ogóle nie używaj go), a całą instrukcję daj do userContent:
+
+  const systemPrompt = ''; // albo undefined – żeby preamble było puste
+
+  const userContent = [
+    `Using these elements: ${basePrompt}.`,
+    `Write a single paragraph of 2–3 sentences (35–80 words) in natural English prose.`,
+    `Do NOT output tags, lists, labels, headings, or parentheses.`,
+    `Start immediately with the scene description. No meta commentary. No role talk.`,
+    `Bad: "Tags: woman, curvy, realistic"`,
+    `Good: "A young Japanese woman with a curvy build reclines against weathered wooden steps..."`,
+  ].join(' ');
+
+C) main.js – twardy reset sekwencji między wywołaniami
+-------------------------------------------------------
+Obecnie recyklingujesz contextSequence. To ok, ale musisz ją czyścić, bo inaczej kontekst „przecieka”.
+Sprawdź w node-llama-cpp, czy LlamaContextSequence ma metody clear()/reset()/seek(0). Najczęściej:
+  - contextSequence.clear()    // lub
+  - contextSequence.reset()    // lub
+  - contextSequence.setPosition(0)
+
+Wstaw przed utworzeniem nowej sesji:
+  if (contextSequence?.clear) contextSequence.clear();
+  else if (contextSequence?.reset) contextSequence.reset();
+  // w ostateczności: pobierz nową sekwencję
+  else contextSequence = context.getSequence();
+
+Potem:
+  if (session) session.dispose();
+  session = new LlamaChatSession({ contextSequence });
+
+Jeżeli biblioteka nie umożliwia czyszczenia sequence, rozważ NIE reużywać jej:
+  contextSequence = context.getSequence(); // nowa sekwencja dla każdego żądania
+
+D) main.js – rozważ przejście na „gołe” completion (opcjonalnie)
+-----------------------------------------------------------------
+Jeśli LlamaChatSession wprowadza swoje własne założenia chatowe, spróbuj:
+
+  const completion = await model.createCompletion({
+    // lub context.createCompletion(...) zależnie od wersji
+    prompt,
+    maxTokens,
+    temperature,
+    topP,
+    stop: stop, // tylko USER: warianty
+  });
+
+I zrezygnuj z LlamaChatSession. Dzięki temu masz pełną kontrolę nad promptem.
+
+E) Dodatkowa „format lock” w promptach
+--------------------------------------
+Dodaj „hard rule”:
+  - “If you are about to mention the assistant, system, safety, or instructions (e.g., ‘You are a helpful…’), do not. Instead, transform it into a direct scene description.”
+
+W praktyce:
+  `If you are about to write anything about being an assistant, system prompts, safety policies, or instructions, stop and rewrite it as a direct scene description without any labels.`
+
+F) normalizeNarrative – drobna ochrona przed meta
+-------------------------------------------------
+Możesz dodać miękkie odcięcie, gdy model zaczyna od „You are/As an assistant/As an AI…”:
+
+  s = s.replace(/^\s*(you are|you're|as an(?:\s+ai|\s+assistant)?|i am|i'm)\b[^.]*\.\s*/i, '');
+
+Ale traktuj to jako „safety net”, nie główne rozwiązanie.
+
+5) Krótki checklist
+- [ ] buildTheBlokePrompt nie dokleja już „A chat between…”, a jeśli używa systemText – jest on neutralny (bez „assistant”).
+- [ ] Cała specyfikacja formatu jest w USER:, z anty-przykładem (Bad) i wzorem (Good).
+- [ ] STOP_SEQS: tylko USER: warianty (bez ASSISTANT:).
+- [ ] contextSequence jest twardo resetowana/clearowana przed KAŻDYM zapytaniem (albo tworzysz nową).
+- [ ] (Opcjonalnie) Używasz gołego createCompletion zamiast LlamaChatSession.
+- [ ] normalizeNarrative usuwa ewentualne resztki metatekstu na początku.
+
+6) Minimalny przykład finalnego promptu (bez preamble)
+USER: Using these elements: woman, young adult, japanese, curvy build, realistic, suggestive. Write a single paragraph of 2–3 sentences (35–80 words) in natural English prose. Do NOT output tags, lists, labels, headings, or parentheses. Start immediately with the scene description. No meta commentary. No role talk. Bad: "Tags: woman, curvy, realistic" Good: "A young Japanese woman with a curvy build reclines against weathered wooden steps, her confident gaze meeting the camera. Warm golden light filters through nearby foliage, casting soft shadows across her skin and highlighting the natural curves of her pose."
+ASSISTANT: 
+
+7) Gdyby problem nie ustąpił
+- Przetestuj ten sam prompt w llama.cpp (CLI) i porównaj – jeśli CLI działa poprawnie, winny jest session/sequence/stop w aplikacji.
+- Spróbuj zupełnie pustego systemText (lub bez system): tylko USER:/ASSISTANT:.
+- Podnieś temperaturę do 0.8–0.9, top_p do 0.95 (kreatywność prozy) – ale to kosmetyka wobec preamble/kontekstu.
+
+8) Podsumowanie
+- Meta-odpowiedzi o „asystencie” to zwykle efekt niepożądanego preamble lub przeciekającego kontekstu.
+- Najprostsza naprawa: zero preamble, cały format i treść w USER:, reset sekwencji między wywołaniami.
+- normalizeNarrative tylko „sprząta”, ale kluczem jest właściwy prompt i czysty kontekst.
+
+— Koniec —

@@ -1,0 +1,112 @@
+{
+  "name": "prompt-builder",
+  "private": true,
+  "version": "1.0.0",
+  "description": "AI-powered prompt builder for image generation with local LLM support",
+  "author": "btitkin",
+  "type": "module",
+  "main": "main.js",
+  "homepage": "./",
+  "scripts": {
+    "dev": "vite",
+    "build": "set ELECTRON=true && vite build",
+    "preview": "vite preview",
+    "electron": "electron .",
+    "start": "npm run build && electron .",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:electron": "set ELECTRON=true && npm run build && electron-builder",
+    "dist": "set ELECTRON=true && npm run build && electron-builder --publish=never",
+    "lint": "eslint \"**/*.{ts,tsx,js,jsx}\"",
+    "format": "prettier --write .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@google/genai": "^1.17.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "node-llama-cpp": "^3.13.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.2",
+    "concurrently": "^9.2.1",
+    "electron": "^31.2.1",
+    "electron-builder": "^24.13.3",
+    "electron-icon-builder": "^2.0.1",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "wait-on": "^8.0.4",
+    "@typescript-eslint/eslint-plugin": "^7.13.1",
+    "@typescript-eslint/parser": "^7.13.1",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3",
+    "vitest": "^2.0.5"
+  },
+  "build": {
+    "appId": "com.btitkin.promptbuilder",
+    "productName": "Prompt Builder",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "main.js",
+      "preload.js",
+      "logo.svg",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "./models",
+        "to": "models"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

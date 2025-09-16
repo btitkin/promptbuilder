@@ -1,0 +1,222 @@
+Nazwa pliku: wizardlm_electron_fix_feedback.txt
+Data: 2025-09-13
+Temat: WizardLM 7B + Electron – generateRandomDescription zawsze używa fallbacku (diagnoza i poprawki)
+
+Streszczenie
+- Przyczyna 1 (krytyczna): Stop sequences zawierają "ASSISTANT:", a prompt kończy się na "ASSISTANT:". Gdy model echem wypisze „ASSISTANT:” lub gdy post-trim szuka „ASSISTANT:”, wynik bywa przycinany do pustki → fallback.
+- Przyczyna 2: W generateRandomDescription odrzucasz sensowne odpowiedzi “heurystyką” (hasNoProblematicStart), zanim trafią do normalizera.
+- Przyczyna 3: Normalizator potrafi nadmiernie ingerować (np. zamiany znaków/rozbicia separatorów), co w niektórych przypadkach wyjaławia wynik.
+
+Najważniejsze zmiany (TL;DR)
+1) Usuń "ASSISTANT:" ze stop sequences wszędzie (renderer i main).
+2) Zakończ prompt dokładnie na "ASSISTANT: " (z trailing space). Zatrzymuj generację na "USER:" (różne warianty z newline).
+3) W generateRandomDescription najpierw normalizuj odpowiedź i użyj jej, a dopiero gdy normalizer zwróci pustkę — zastosuj fallback (usuń pre-filtrowanie “hasNoProblematicStart”).
+4) Ułagodź normalizeToTagsLine tak, by nie psuł liczb/ekspozycji (np. f/1.8, 1/125s) i nie wycinał zbyt agresywnie.
+5) W main.js trimuj ewentualnie tylko po USER:, nie po ASSISTANT:.
+
+Odpowiedzi na Twoje pytania
+1) Format promptu TheBloke vs WizardLM (Wizard-Vicuna):
+   - Tak, format USER: ... ASSISTANT: jest właściwy dla wizard-vicuna-7b-uncensored.
+   - Kluczowe: NIE używaj "ASSISTANT:" w stop sequences. Kończ prompt na "ASSISTANT: " i dodaj stop'y dla USER: (w tym warianty z nową linią).
+   - Jeśli biblioteka potrafi użyć chat_template z GGUF, to lepiej. W przeciwnym razie Twój buildTheBlokePrompt jest OK (dodaj trailing space).
+
+2) Czy normalizeToTagsLine jest zbyt agresywna?
+   - Tak, w kilku miejscach może dewastować wyjście (np. zamiana kropek na przecinki, usuwanie slashy). Zmień na łagodniejszy wariant (poniżej).
+
+3) Jak poprawnie debugować lokalne LLM?
+   - Loguj: kompletny prompt, raw output (przed trymowaniem), post-trim output, stop reason (o ile dostępny), długości tekstu przed/po clean/normalize.
+   - Testuj normalizer na przykładowych odpowiedziach offline.
+   - Nie tnij po “ASSISTANT:”. Stop tylko na “USER:”.
+
+Konkretne zmiany w kodzie (kopiuj-wklej)
+
+A) customApiService.ts
+
+1) Stop sequences – usuń ASSISTANT:
+Zmień:
+  const STOP_SEQS = ['USER:', '\nUSER:', 'ASSISTANT:', '\nASSISTANT:'];
+Na:
+  const STOP_SEQS = ['USER:', '\nUSER:', '\n\nUSER:'];
+
+2) buildTheBlokePrompt – dodaj spację po "ASSISTANT:"
+Zmień:
+  return `${preamble}\n\nUSER: ${userText}\nASSISTANT:`;
+Na:
+  return `${preamble}\n\nUSER: ${userText}\nASSISTANT: `;
+
+3) normalizeToTagsLine – łagodniejsza wersja (pełna podmiana funkcji):
+
+  const normalizeToTagsLine = (text: string): string => {
+    console.log('🔍 DEBUG: normalizeToTagsLine input:', JSON.stringify(text));
+    
+    let s = cleanTextResponse(text);
+    console.log('🔍 DEBUG: After cleanTextResponse:', JSON.stringify(s));
+    console.log('🔍 DEBUG: raw->len', text?.length, 'clean->len', s?.length);
+
+    // Usuń proste etykiety na początku
+    s = s.replace(/^\s*(tags?|image tags?|prompt|description)\s*:\s*/i, '');
+    s = s.replace(/^(i(?:'|’)?ll create|i can suggest|let me generate).*?:\s*/i, '');
+
+    // Zostaw slashy i kropki (nie psuj f/1.8, 1/125s itp.)
+    // Konwersja separatorów: ; | i nowe linie → przecinek
+    s = s.replace(/[;|]/g, ',');
+    s = s.replace(/\r?\n+/g, ',');
+    // Usuń bullet/list markers
+    s = s.replace(/(^|,)\s*(?:KATEX_INLINE_OPEN?\d+KATEX_INLINE_CLOSE?[.)]|[-*•])\s+/g, '$1');
+
+    // Usuń role tokens
+    s = s.replace(/\b(?:OOC|SYS|SYSTEM|USER|ASSISTANT)\b\s*:?/gi, '');
+
+    // Usuń cudzysłowy/backticki
+    s = s.replace(/["'`]/g, '');
+
+    // Redukcja wielokrotnych przecinków/spacji
+    s = s.replace(/\s*,\s*/g, ',').replace(/,{2,}/g, ',').replace(/\s{2,}/g, ' ').trim();
+
+    console.log('🔍 DEBUG: After basic cleaning:', JSON.stringify(s));
+
+    const rawParts = s.split(',').map(t => t.trim()).filter(Boolean);
+
+    // Delikatne odcięcie oczywistych prefiksów, ale nie naruszaj wartości technicznych
+    const parts = rawParts
+      .map(p => p.replace(/^(woman|man|pose|location|clothing|lighting|style|age|build)\s*:?\s*/i, '').trim())
+      .filter(Boolean);
+
+    const seen = new Set<string>();
+    const tags: string[] = [];
+    for (const p of parts) {
+      const key = p.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        tags.push(p);
+      }
+      if (tags.length >= 30) break;
+    }
+
+    console.log('🔍 DEBUG: Final tags:', tags);
+    if (tags.length === 0) {
+      console.log('🔍 DEBUG: No tags found, using fallback');
+      return 'portrait, single subject, natural light, shallow depth of field, cinematic lighting, high detail, sharp focus, photorealistic';
+    }
+
+    const result = tags.join(', ');
+    console.log('🔍 DEBUG: normalizeToTagsLine result:', JSON.stringify(result));
+    return result;
+  };
+
+4) generateRandomDescription – najpierw normalizuj, usuń “hasNoProblematicStart”:
+Zastąp całą logikę po odebraniu response tak:
+
+    console.log('🔍 DEBUG: Raw LLM response:', JSON.stringify(response));
+    console.log('🔍 DEBUG: Response length:', response?.length || 0);
+
+    const cleaned = cleanTextResponse(response);
+    console.log('🔍 DEBUG: Cleaned response:', JSON.stringify(cleaned));
+    console.log('🔍 DEBUG: Cleaned length:', cleaned?.length || 0);
+
+    // ZAWSZE spróbuj znormalizować
+    const normalized = normalizeToTagsLine(cleaned);
+    console.log('🔍 DEBUG: Normalized result:', JSON.stringify(normalized));
+
+    if (normalized && normalized.trim().length > 0) {
+      console.log('🔍 DEBUG: Using LLM response!');
+      return normalized;
+    }
+
+    console.log('🔍 DEBUG: Using fallback due to empty normalized output');
+    const fallbackElements = [
+      ...baseElements,
+      'detailed',
+      'high quality',
+      Math.random() > 0.5 ? 'natural lighting' : 'dramatic lighting',
+      Math.random() > 0.5 ? 'shallow depth of field' : 'sharp focus',
+      Math.random() > 0.5 ? 'cinematic' : 'artistic',
+      'masterpiece'
+    ];
+    return normalizeToTagsLine(fallbackElements.join(', '));
+
+UWAGA: Pamiętaj, że to wywołanie ma korzystać z nowych STOP_SEQS (bez ASSISTANT).
+
+B) main.js
+
+1) unifyStop – usuń ASSISTANT z domyślnych stopów:
+Zmień:
+  return ['USER:', '\nUSER:', 'ASSISTANT:', '\nASSISTANT:'];
+Na:
+  return ['USER:', '\nUSER:', '\n\nUSER:'];
+
+2) trimAtStopSequences – tnij tylko po USER:
+Zmień implementację na:
+  function trimAtStopSequences(text, stops) {
+    if (!text || !stops?.length) return text;
+    const userStops = stops.filter(s => s.includes('USER:'));
+    let idx = -1;
+    for (const s of userStops) {
+      const i = text.indexOf(s);
+      if (i !== -1) {
+        if (idx === -1 || i < idx) idx = i;
+      }
+    }
+    return idx === -1 ? text : text.slice(0, idx);
+  }
+
+3) Wywołanie session.prompt – przekaż tylko stopSequences i antiPrompts (bez dodatkowego “stop”):
+Zmień fragment:
+  const response = await session.prompt(prompt, {
+    temperature,
+    topP,
+    topK,
+    maxTokens,
+    stopSequences: stop,
+    stop,
+    antiPrompts: stop
+  });
+Na:
+  const response = await session.prompt(prompt, {
+    temperature,
+    topP,
+    topK,
+    maxTokens,
+    stopSequences: stop,   // tylko USER:
+    antiPrompts: stop      // tylko USER:
+  });
+
+4) Dodatkowe logi do diagnostyki:
+Zaraz po otrzymaniu ‘response’:
+  console.log('[LLM][RAW OUT len]', response?.length, 'text=', JSON.stringify(response));
+Po trymowaniu:
+  const trimmed = trimAtStopSequences(response, stop);
+  console.log('[LLM][POST-TRIM len]', trimmed?.length, 'text=', JSON.stringify(trimmed));
+  return { result: trimmed ?? response };
+
+C) electronService.ts
+- Bez zmian funkcjonalnych. Warto tylko dopisać extra log w invokeLLM, żeby wiedzieć jakie stop’y idą do main (opcjonalnie):
+  console.log('[LLM][invokeLLM] stops:', payload.stop);
+
+Checklist szybkiej weryfikacji
+- [ ] Czy w STOP_SEQS oraz unifyStop usunięto “ASSISTANT:”?
+- [ ] Czy prompt kończy się na “ASSISTANT: ” (ze spacją)?
+- [ ] Czy main.js nie przycina po “ASSISTANT:”, a ewentualny trim robi tylko po “USER:”?
+- [ ] Czy generateRandomDescription zawsze próbuje normalizeToTagsLine przed fallbackiem (bez pre-filtrowania “Here/This/Create…”)? 
+- [ ] Czy normalizer nie psuje liczb i ekspozycji (nie zamienia kropek ani slashy)?
+- [ ] Czy w logach masz: [PROMPT], [RAW OUT], [POST-TRIM], [NORMALIZED]?
+
+Jak debugować lokalny LLM (praktycznie)
+- Loguj surowy prompt po złożeniu (JSON.stringify, żeby widzieć znaki nowej linii).
+- Upewnij się, że stop reason nie odcina odpowiedzi do zera (czasem biblioteka ucina po pierwszym tokenie, gdy stop się “zaciśnie”).
+- Porównaj wynik z CLI (llama.cpp) z tymi samymi stopami i promptem; jeśli CLI zwraca ładne CSV, problem jest po stronie IPC/parsingu.
+- Test jednostkowy dla normalizeToTagsLine na kilku przykładach: CSV, bullet listy, JSON, tekst z “Tags: …”, techniczne wartości (f/1.8, 1/125s).
+
+Dlaczego dotąd zawsze był fallback
+- Stop zawierał “ASSISTANT:”, więc:
+  - Model bywał ucinany natychmiast (0 tokenów), lub
+  - Post-trim usuwał wszystko, gdy tylko pojawiło się “ASSISTANT:” w strumieniu.
+- Dodatkowa heurystyka (hasNoProblematicStart) odrzucała odpowiedzi zaczynające się od “Here/This/Create”, zanim w ogóle je znormalizowałeś.
+- Normalizer czasem rozbijał format za mocno.
+
+Po wdrożeniu zmian
+- Model zacznie zwracać treść po “ASSISTANT: ”, a generacja zostanie ucięta dopiero przy “USER:”.
+- Normalizer będzie dostawał stabilne, przewidywalne CSV i zwróci je bez zbędnych ingerencji.
+- Fallback będzie odpalać tylko w realnych błędach (pusty output, błąd IPC), nie “z urzędu”.
+
+— Koniec —

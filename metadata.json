@@ -1,0 +1,5 @@
+{
+  "name": "Prompt Builder",
+  "description": "An intelligent web application that transforms simple descriptions into structured, model-specific prompts for various AI image and video generators.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,136 @@
+Nazwa pliku: wizardlm_random_diversity_sentinel_fix.txt
+Data: 2025-09-13
+Temat: WizardLM Random – powtarzalne fallbacki i meta-odpowiedzi (różnorodność i format z użyciem sentinela)
+
+1) Objawy
+- Model często:
+  - zwraca fallbackowy opis (buildFallbackNarrative),
+  - generuje meta-odpowiedzi o “asystencie” / “policies”,
+  - miesza role (User/Assistant) w środku tekstu.
+- Pierwsze użycie bywa lepsze, kolejne coraz mniej różnorodne.
+
+2) Główna diagnoza
+- Ucinanie odpowiedzi na “USER:” powodowało przypadkowe trimy i puste wyniki → fallback.
+- Minimalny Vicuna prompt ok, ale czasem model wchodzi w tryb “assistant policy” (nawyki z pre-train).
+- Chatowe automaty i stop sequences reagujące na słowo “USER” w treści to prosty trigger miksowania ról.
+- Parametry sampling (temp/top_p) jeszcze nie dość agresywne dla różnorodności; brak seed/jitter.
+
+3) Strategia naprawy (szybkie wnioski)
+- Zastąp stop sequences pojedynczym sentinel-em (np. <<EOD>>). Nie używaj już “USER:” jako stop.
+- Wymuś w prompcie zakończenie opisów na <<EOD>> i przycinaj po nim.
+- Utrzymaj minimalny Vicuna prompt: “USER: ...\nASSISTANT: ” (bez preamble).
+- Dodaj krótki few-shot Good/Bad (2–3 zdania prozy vs. “Tags: ...”).
+- Podbij sampling dla różnorodności i wprowadź seed/jitter per wywołanie.
+- Jeżeli ChatSession wciąż robi niespodzianki, przejdź na createCompletion dla pełnej kontroli.
+
+4) Zmiany w prompcie (customApiService.ts)
+- Ustal sentinel:
+  const SENTINEL = '<<EOD>>';
+
+- User content (format-lock):
+  Using these elements: ${basePrompt}. Write one paragraph of 2–3 sentences (35–80 words) in natural English prose. Do NOT output tags, lists, labels, headings, or parentheses. No role talk. No meta commentary. Start immediately with the scene description. End the description with <<EOD>> and do not write anything after it. Bad: Tags: woman, curvy, realistic Good: A young Japanese woman with a curvy build reclines against weathered wooden steps, her confident gaze meeting the camera. Warm golden light filters through nearby foliage, casting soft shadows across her skin and highlighting the natural curves of her pose.
+
+- Zmienione stop sequences w wywołaniu:
+  stop: ['<<EOD>>']
+
+- Po odpowiedzi:
+  let out = normalizeNarrative(response);
+  out = out.replace(/<<EOD>>\s*$/i, '').trim();
+  if (out.length > 30) return out;
+  else return buildFallbackNarrative(baseElements);
+
+5) Minimalny Vicuna prompt (bez preamble)
+- buildTheBlokePrompt:
+  return `USER: ${userText}\nASSISTANT: `;
+
+- Upewnij się, że nigdzie nie wstrzykujesz “A chat between...” ani “You are a helpful assistant”.
+
+6) Parametry sampling dla różnorodności
+- temperature: 0.95 – 1.05
+- top_p: 0.95 – 0.98
+- top_k: 100 – 200 (jeśli wspierane)
+- repeatPenalty: 1.10 – 1.20 (jeśli wspierane)
+- maxTokens: 220 – 250 (2–3 zdania + zapas)
+- seed: losowy per wywołanie, jeśli binding wspiera (np. payload.seed = Math.floor(Math.random()*1e9))
+- Drobny jitter (jeśli brak seed): temperature ± 0.03–0.06 losowo na klik
+
+7) main.js – stop na sentinel i przycinanie
+- Domyślne stop’y:
+  function unifyStop(payload) {
+    if (Array.isArray(payload?.stop) && payload.stop.length) return payload.stop;
+    return ['<<EOD>>'];
+  }
+
+- Trim:
+  function trimAtStopSequences(text, stops) {
+    if (!text || !stops?.length) return text;
+    let idx = -1;
+    for (const s of stops) {
+      const i = text.indexOf(s);
+      if (i !== -1 && (idx === -1 || i < idx)) idx = i;
+    }
+    return idx === -1 ? text : text.slice(0, idx);
+  }
+
+- Przekazuj tylko ['<<EOD>>'] jako stopSequences (ChatSession) lub stop (createCompletion). Usuń antiPrompts/USER z konfiguracji.
+
+8) Alternatywa: createCompletion (A/B test)
+- Jeśli ChatSession nadal miesza role:
+  const out = await model.createCompletion({
+    prompt,                 // "USER: ...\nASSISTANT: "
+    maxTokens, temperature, topP,
+    // (opcjonalnie) topK, repeatPenalty,
+    stop: ['<<EOD>>'],
+    stream: false
+  });
+  const text = typeof out === 'string' ? out : (out?.text ?? '');
+  const trimmed = trimAtStopSequences(text, ['<<EOD>>']);
+  return { result: trimmed };
+
+- createCompletion często eliminuje chatowe “magie” i daje spójny format.
+
+9) Few-shot – krótkie i bez nawiasów
+- Zostaw 1–2 krótkie przykłady:
+  Bad: Tags: woman, curvy, realistic
+  Good: A young Japanese woman with a curvy build reclines against weathered wooden steps, her confident gaze meeting the camera. Warm golden light filters through nearby foliage, casting soft shadows across her skin and highlighting the natural curves of her pose.
+
+- Nie przesadzaj z negacjami (“nie rób X, Y, Z, ...”) – jedna zwięzła linijka wystarczy: “Do NOT output tags or labels. No role talk. No meta commentary.”
+
+10) Normalizer prozy (normalizeNarrative)
+- Pozostaw miękką siatkę bezpieczeństwa, ale nie czyść agresywnie.
+- Po zmianie na sentinel głównym kryterium jest obecność 1–2 zdań > 30 znaków; nie uruchamiaj fallbacku zbyt szybko.
+
+11) Dodatkowe triki na różnorodność
+- Mała losowość w baseElements (np. losowy twist: “golden hour” vs “rain-soaked neon street”, “handheld composition” vs “wide-angle static frame”).
+- Zmieniaj seed/jitter na każde kliknięcie.
+- Rotuj jeden-dwa Good przykłady (inne scenerie), ale zachowaj zwięzłość.
+
+12) Checklist wdrożeniowa
+- [ ] Prompt kończy się na “ASSISTANT: ” (spacja).
+- [ ] W userContent dodano “End the description with <<EOD>>”.
+- [ ] stop = ['<<EOD>>'] w rendererze i main.js.
+- [ ] main.js nie używa USER jako stop ani antiPrompts.
+- [ ] buildTheBlokePrompt bez preamble.
+- [ ] temperature/top_p/top_k/repeatPenalty podbite (jeśli wspierane).
+- [ ] Losowy seed lub jitter temperatury per klik.
+- [ ] normalizeNarrative usuwa tylko sentinel i miękkie meta-wstępy.
+- [ ] Fallback włącza się tylko, gdy po usunięciu <<EOD>> treść jest naprawdę pusta/krótka.
+- [ ] Logi: [PROMPT], [RAW OUT], [POST-TRIM], długości i powód fallbacku.
+
+13) Minimalny finalny prompt (dla testu)
+USER: Using these elements: woman, young adult, japanese, curvy build, realistic, suggestive. Write one paragraph of 2–3 sentences (35–80 words) in natural English prose. Do NOT output tags, lists, labels, headings, or parentheses. No role talk. No meta commentary. Start immediately with the scene description. End the description with <<EOD>> and do not write anything after it. Bad: Tags: woman, curvy, realistic Good: A young Japanese woman with a curvy build reclines against weathered wooden steps, her confident gaze meeting the camera. Warm golden light filters through nearby foliage, casting soft shadows across her skin and highlighting the natural curves of her pose.
+ASSISTANT: 
+
+14) Dlaczego to działa
+- Sentinel eliminuje przypadkowe ucięcia na “USER:” i mieszanie ról w środku.
+- Minimalny Vicuna prompt + krótkie few-shot ustawiają tryb prozy, nie “assistant policy”.
+- Agresywniejszy sampling i seed/jitter zwiększają różnorodność.
+- createCompletion (opcjonalnie) usuwa chatowe automaty.
+
+15) Co sprawdzić, jeśli nadal pojawi się meta
+- Zmniejsz liczbę negacji w promptach (krótki, pozytywny format-lock).
+- Dodaj drugi “Good” z zupełnie innym klimatem (noc, neon, deszcz).
+- Zrób A/B z createCompletion (często rozwiązuje mieszanie ról).
+- Upewnij się, że po stronie kodu NIGDZIE nie masz “ASSISTANT:” w stopach lub antiPrompts.
+
+— Koniec —
