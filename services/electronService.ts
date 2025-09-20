@@ -1,6 +1,6 @@
 // This file acts as a bridge between the React application and the Electron main process.
 
-// Payload for the main process - simplified and focused
+// Payload for the main process - extended to support all task types
 export interface InvokeLLMPayload {
   // Raw combined prompt (TheBloke "USER: ... ASSISTANT:" template)
   prompt: string;
@@ -10,6 +10,14 @@ export interface InvokeLLMPayload {
   top_p?: number;
   maxTokens?: number;
   stop?: string[];     // optional stop sequences
+  
+  // Additional properties for specific tasks
+  numVariations?: number;
+  nsfwSettings?: any;
+  styleFilter?: any;
+  selectedModel?: string;
+  characterSettings?: any;
+  selectedPresets?: string[];
 }
 
 // Define the shape of the API exposed by preload.js
@@ -72,6 +80,25 @@ export async function invokeLLM(task: string, payload: InvokeLLMPayload): Promis
 
   if (typeof response?.result === 'string') {
     return response.result;
+  }
+
+  // Handle case where result might be nested or different format
+  if (response && typeof response === 'object' && 'result' in response) {
+    const result = (response as any).result;
+    if (typeof result === 'string') {
+      return result;
+    }
+  }
+
+  // Handle structured responses from main process (like generatePromptVariations)
+  if (response && typeof response === 'object') {
+    // For generatePromptVariations, the main process returns { structuredPrompts, negativePrompt }
+    if ('structuredPrompts' in response && 'negativePrompt' in response) {
+      return JSON.stringify(response);
+    }
+    
+    // For other structured responses, stringify them
+    return JSON.stringify(response);
   }
 
   throw new Error('Received an invalid response from the local AI process.');

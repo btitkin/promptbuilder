@@ -503,7 +503,7 @@ Output rules:
 
     instruction += `\n- Subtly reflect the '${styleFilter.main}'${styleFilter.sub !== 'any' ? `/${styleFilter.sub}` : ''} aesthetic without naming styles as tags.`;
     if (selectedPresets && selectedPresets.length > 0) {
-        instruction += `\n- Incorporate these presets/themes naturally if they fit: ${selectedPresets.join(', ')}.`;
+        instruction += `\n- You MUST incorporate ALL of these presets/themes: ${selectedPresets.join(', ')}.`;
     }
 
     switch (characterSettings.gender) {

@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "electron": "electron .",
     "start": "npm run build && electron .",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5174 && electron .\"",
     "build:electron": "set ELECTRON=true && npm run build && electron-builder",
     "dist": "set ELECTRON=true && npm run build && electron-builder --publish=never",
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\"",

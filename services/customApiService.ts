@@ -288,8 +288,8 @@ export const generatePromptVariations = async (
   selectedModel: string,
   characterSettings: CharacterSettingsState
 ): Promise<{ structuredPrompts: StructuredPrompt[], negativePrompt: string }> => {
-  // TheBloke preamble for WizardLM
-  const systemPrompt = `A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.`;
+  // Empty system prompt to avoid assistant-style responses
+  const systemPrompt = ``;
   
   const safeUser = truncateMiddle(cleanTextResponse(userInput), MAX_USER_INPUT_CHARS);
   
@@ -393,27 +393,151 @@ Output format rules (STRICT):
         negativePrompt: parsed.negativePrompt || 'ugly, blurry, worst quality, bad anatomy'
       };
     } catch (jsonError) {
-      // Fallback: Create structured prompt from plain text response
-      const fallbackPrompt: StructuredPrompt = {
-        subject: [safeUser],
-        attributes: ['detailed', 'high quality', 'masterpiece'],
-        clothing: [],
-        pose: [],
-        action: [],
-        location: [],
-        background: [],
-        style: [styleFilter.main, styleFilter.sub !== 'any' ? styleFilter.sub : '', 'professional'].filter(Boolean)
+      // Fallback: Create structured prompt from detailed description
+      // Extract key elements from the detailed description for better prompt generation
+      const extractElementsFromDescription = (description: string): StructuredPrompt => {
+        const prompt: StructuredPrompt = {
+          subject: [],
+          attributes: [],
+          clothing: [],
+          pose: [],
+          action: [],
+          location: [],
+          background: [],
+          style: []
+        };
+        
+        const descLower = description.toLowerCase();
+        
+        // Intelligent subject extraction - find the main subject from the description
+        const subjectPatterns = [
+          /(young woman|woman|female|lady|girl)/,
+          /(man|male|gentleman|boy)/,
+          /(person|individual|figure|human)/
+        ];
+        
+        for (const pattern of subjectPatterns) {
+          const match = descLower.match(pattern);
+          if (match && match[1]) {
+            prompt.subject.push(match[1]);
+            break; // Take only the first main subject
+          }
+        }
+        
+        // If no subject found, use context to determine subject
+        if (prompt.subject.length === 0) {
+          // Look for contextual clues about the subject
+          if (descLower.includes('her ') || descLower.includes('she ') || descLower.includes('woman') || descLower.includes('female')) {
+            prompt.subject.push('woman');
+          } else if (descLower.includes('his ') || descLower.includes('he ') || descLower.includes('man') || descLower.includes('male')) {
+            prompt.subject.push('man');
+          } else {
+            prompt.subject.push('person'); // Default fallback
+          }
+        }
+        
+        // Enhanced attribute extraction with better context awareness
+        if (descLower.includes('young')) prompt.attributes.push('youthful', 'young appearance');
+        if (descLower.includes('dark hair') || descLower.includes('dark-haired')) prompt.attributes.push('dark hair', 'brunette');
+        if (descLower.includes('soft') || descLower.includes('gentle') || descLower.includes('subtle')) 
+          prompt.attributes.push('soft lighting', 'gentle atmosphere', 'subtle tones');
+        if (descLower.includes('overcast') || descLower.includes('diffused') || descLower.includes('muted')) 
+          prompt.attributes.push('overcast light', 'diffused lighting', 'muted tones');
+        if (descLower.includes('contemplative') || descLower.includes('peaceful') || descLower.includes('quiet')) 
+          prompt.attributes.push('contemplative mood', 'peaceful atmosphere', 'quiet moment');
+        if (descLower.includes('relaxed') || descLower.includes('comfortable') || descLower.includes('casual')) 
+          prompt.attributes.push('relaxed pose', 'comfortable stance', 'casual attitude');
+        if (descLower.includes('natural') || descLower.includes('realistic') || descLower.includes('authentic')) 
+          prompt.attributes.push('natural look', 'realistic appearance', 'authentic moment');
+        
+        // Extract specific objects and details
+        if (descLower.includes('terracotta pot') || descLower.includes('clay pot')) 
+          prompt.attributes.push('terracotta pot', 'clay pottery', 'plant pot');
+        if (descLower.includes('texture') || descLower.includes('textured')) 
+          prompt.attributes.push('textured surface', 'detailed texture');
+        if (descLower.includes('wood') || descLower.includes('wooden')) 
+          prompt.background.push('wood floor', 'wooden floorboards', 'natural wood');
+        if (descLower.includes('grain') || descLower.includes('grained')) 
+          prompt.attributes.push('wood grain', 'natural grain pattern');
+        
+        // Enhanced location/background extraction
+        if (descLower.includes('window') || descLower.includes('large window')) {
+          prompt.location.push('near window', 'window view');
+          prompt.background.push('window light', 'natural illumination', 'daylight');
+        }
+        if (descLower.includes('room') || descLower.includes('interior') || descLower.includes('inside')) 
+          prompt.location.push('interior', 'indoors', 'room setting');
+        if (descLower.includes('light') || descLower.includes('lighting') || descLower.includes('illumination')) 
+          prompt.attributes.push('natural lighting', 'soft illumination', 'light play');
+        if (descLower.includes('shadow') || descLower.includes('shadows')) 
+          prompt.attributes.push('soft shadows', 'light and shadow', 'shadow play');
+        
+        // Enhanced pose/action extraction
+        if (descLower.includes('standing') || descLower.includes('stands')) 
+          prompt.pose.push('standing', 'upright pose', 'standing position');
+        if (descLower.includes('turned') || descLower.includes('turning') || descLower.includes('facing away')) 
+          prompt.pose.push('turned away', 'profile view', 'side angle');
+        if (descLower.includes('holding') || descLower.includes('carrying')) 
+          prompt.action.push('holding object', 'carrying item', 'interacting with object');
+        if (descLower.includes('observing') || descLower.includes('looking') || descLower.includes('gazing')) 
+          prompt.action.push('observing', 'looking away', 'gazing into distance');
+        if (descLower.includes('contemplative') || descLower.includes('thoughtful')) 
+          prompt.attributes.push('contemplative expression', 'thoughtful mood');
+        
+        // Extract specific clothing details with exact matches
+        if (descLower.includes('charcoal-grey t-shirt') || descLower.includes('charcoal grey t-shirt') || descLower.includes('grey t-shirt')) 
+          prompt.clothing.push('charcoal grey t-shirt', 'grey cotton shirt', 'casual t-shirt');
+        if (descLower.includes('dark indigo jeans') || descLower.includes('indigo jeans') || descLower.includes('blue jeans')) 
+          prompt.clothing.push('dark indigo jeans', 'blue denim jeans', 'casual jeans');
+        if (descLower.includes('simple') || descLower.includes('plain')) 
+          prompt.attributes.push('simple clothing', 'plain attire', 'minimalist style');
+        if (descLower.includes('casual') || descLower.includes('everyday')) 
+          prompt.attributes.push('casual wear', 'everyday clothing', 'relaxed attire');
+        
+        // Extract hair details
+        if (descLower.includes('dark hair') || descLower.includes('brunette')) 
+          prompt.attributes.push('dark hair', 'brunette hair', 'brown hair');
+        if (descLower.includes('falling softly') || descLower.includes('soft hair')) 
+          prompt.attributes.push('soft hair', 'flowing hair', 'natural hair');
+        
+        // Remove duplicates and ensure meaningful content
+        prompt.subject = [...new Set(prompt.subject.filter(s => s && s.trim()))];
+        prompt.attributes = [...new Set(prompt.attributes.filter(a => a && a.trim()))];
+        prompt.location = [...new Set(prompt.location.filter(l => l && l.trim()))];
+        prompt.background = [...new Set(prompt.background.filter(b => b && b.trim()))];
+        prompt.pose = [...new Set(prompt.pose.filter(p => p && p.trim()))];
+        prompt.action = [...new Set(prompt.action.filter(a => a && a.trim()))];
+        prompt.clothing = [...new Set(prompt.clothing.filter(c => c && c.trim()))];
+        
+        return prompt;
       };
       
-      // Generate multiple variations by adding different attributes
+      const detailedPrompt = extractElementsFromDescription(safeUser);
+      
+      // For single variation, return one detailed prompt
+      if (numVariations === 1) {
+        return {
+          structuredPrompts: [detailedPrompt],
+          negativePrompt: 'ugly, blurry, worst quality, deformed, mutated, extra limbs, bad anatomy, disfigured'
+        };
+      }
+      
+      // For multiple variations, create slight variations
       const variations: StructuredPrompt[] = [];
       for (let i = 0; i < numVariations; i++) {
-        const variation: StructuredPrompt = JSON.parse(JSON.stringify(fallbackPrompt));
-        const variationAttributes = ['detailed', 'high quality', 'masterpiece'];
-        if (i === 1) variationAttributes.push('artistic', 'creative', 'vibrant');
-        if (i === 2) variationAttributes.push('professional', 'polished', 'cinematic');
-        if (i >= 3) variationAttributes.push('unique', 'expressive', 'dynamic');
-        variation.attributes = variationAttributes;
+        const variation: StructuredPrompt = JSON.parse(JSON.stringify(detailedPrompt));
+        
+        // Add variation-specific enhancements only if we have multiple variations
+        if (numVariations > 1) {
+          if (i === 1) {
+            variation.attributes.push('artistic', 'creative composition', 'vibrant colors');
+          } else if (i === 2) {
+            variation.attributes.push('professional photography', 'polished', 'cinematic lighting');
+          } else if (i >= 3) {
+            variation.attributes.push('unique perspective', 'expressive', 'dynamic angle');
+          }
+        }
+        
         variations.push(variation);
       }
       
@@ -638,11 +762,11 @@ export const generateRandomDescription = async (
   ];
 
   try {
-    // Parametry sampling dla większej różnorodności
+    // Parametry sampling dla maksymalnej różnorodności
     const response = await makeApiCall(config, messages, {
-      temperature: 0.95 + (Math.random() * 0.1), // 0.95-1.05 z jitterem
-      top_p: 0.96,
-      maxTokens: 240, // więcej tokenów dla pełnych opisów
+      temperature: 1.2 + (Math.random() * 0.3), // 1.2-1.5 z jitterem - wyższa temperatura dla większej kreatywności
+      top_p: 0.99, // większe top_p dla szerszego zakresu słów
+      maxTokens: 280, // więcej tokenów dla bogatszych opisów
       stop: STOP_SEQS
     });
 

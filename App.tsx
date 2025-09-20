@@ -147,6 +147,7 @@ const App: React.FC = () => {
       model: 'wizard-vicuna-7b-uncensored'
     }
   });
+
   const [snippets, setSnippets] = useState<PromptSnippet[]>([]);
   const [snippetToSave, setSnippetToSave] = useState<{ content: string } | null>(null);
   // New: enhance round and locked phrases
@@ -250,6 +251,8 @@ const App: React.FC = () => {
         }
     } catch (e) { console.error("Failed to save API config", e); }
   }, [apiConfig]);
+
+
 
   const formatSinglePrompt = useCallback((structuredPrompt: StructuredPrompt): string => {
     const processedCategories: { [key: string]: string[] } = {};
@@ -368,7 +371,7 @@ const App: React.FC = () => {
     setError(null);
     try {
         // Soft provider fallback: if selected provider lacks API key, try local custom synthetic fallback
-        let providerToUse: Provider = apiConfig.provider as Provider;
+        let providerToUse: ApiProvider = apiConfig.provider;
         let apiKeyToUse = '';
         const keys = apiConfig.keys || {};
 
@@ -378,7 +381,7 @@ const App: React.FC = () => {
             apiKeyToUse = maybeKey.trim();
           } else {
             // No key for chosen provider -> gracefully fallback to local custom path
-            providerToUse = 'custom_local' as Provider;
+            providerToUse = 'custom_local';
           }
         }
 

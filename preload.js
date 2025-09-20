@@ -22,6 +22,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
       console.log('🔍 DEBUG: Using raw prompt with length:', String(payload.prompt).length);
     }
     return ipcRenderer.invoke('llm-request', { task, payload });
+  },
+  
+  /**
+   * Checks the status of the local GGUF model
+   * @returns {Promise<object>} Model status information
+   */
+  checkModelStatus: () => {
+    console.log('🔍 DEBUG: Checking local model status');
+    return ipcRenderer.invoke('check-model-status');
   }
 });
 

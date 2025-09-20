@@ -1,5 +1,6 @@
 import json
 import requests
+import re
 from typing import Dict, Any, List, Tuple, Optional
 import random
 
@@ -657,22 +658,15 @@ Return a JSON object with:
                 enhanced_description = response
                 
         except Exception as api_error:
-            # LLM is not available - use fallback with basic prompt enhancement
+            # LLM is not available - use fallback with advanced prompt enhancement
             print(f"🔍 DEBUG: ENTERED FALLBACK EXCEPTION HANDLER")
             print(f"⚠️ LLM API Error: {str(api_error)}")
-            print(f"🔄 Using fallback mode - basic prompt enhancement without LLM")
+            print(f"🔄 Using advanced fallback mode - intelligent prompt enhancement without LLM")
             
-            # Create enhanced prompt using built-in logic without LLM
-            positive_prompt = full_description
-            negative_prompt = kwargs.get('negative_prompt', 'blurry, low quality, distorted, bad anatomy, worst quality')
-            enhanced_description = f"⚠️ LLM Offline - Basic Enhancement: {full_description}"
-            
-            # Add some basic enhancements based on style
-            if style_main == 'anime':
-                anime_style = kwargs.get('anime_style', 'ghibli')
-                positive_prompt = f"{anime_style} anime style, {positive_prompt}, detailed, high quality"
-            elif style_main == 'realistic':
-                positive_prompt = f"realistic, photographic, {positive_prompt}, detailed, high resolution"
+            # Create enhanced prompt using advanced built-in logic
+            positive_prompt = self.enhance_prompt_advanced(full_description, style_main, style_sub, **kwargs)
+            negative_prompt = kwargs.get('negative_prompt', 'blurry, low quality, distorted, bad anatomy, worst quality, jpeg artifacts, watermark')
+            enhanced_description = f"⚠️ LLM Offline - Advanced Enhancement: {full_description}"
         
         # Add quality tags if enabled
         if kwargs.get('quality_tags', True):
@@ -692,7 +686,7 @@ Return a JSON object with:
         """
         Generate batch with intelligent randomization - exactly as user requested
         """
-        batch_count = kwargs.get('batch_count', 10)
+        batch_count = kwargs.get('batch_count', 1)
         full_randomize_batch = kwargs.get('full_randomize_batch', False)
         preserved_traits = kwargs.get('preserved_traits', '').strip()
         
@@ -811,6 +805,191 @@ Return a JSON object with:
             return f"{base_description}, {', '.join(variations)}"
         else:
             return base_description
+    
+    def enhance_prompt_advanced(self, description: str, style_main: str, style_sub: str, **kwargs) -> str:
+        """
+        Advanced prompt enhancement without LLM - extracts key elements from rich descriptions
+        and creates optimized prompts for image generation
+        """
+        # Extract key elements from the rich description
+        elements = {
+            'subject': [],
+            'attributes': [],
+            'clothing': [],
+            'pose': [],
+            'action': [],
+            'location': [],
+            'background': [],
+            'lighting': [],
+            'mood': [],
+            'details': []
+        }
+        
+        # Enhanced patterns to extract more details from rich descriptions
+        patterns = {
+            'subject': r'(young woman|woman|man|person|girl|boy|female|male|figure|character)(?: with|,| who| that| \(|\s+|$)',
+            'clothing': r'(string thong|string top|nipple tape|shoulder strap|clothing|wearing|dressed in|outfit|attire|garment|bikini|lingerie|swimsuit)',
+            'pose': r'(squats|squatting|reclines|leaning|standing|sitting|lying|kneeling|bending|stretching|posing|position|posture|gesture)',
+            'location': r'(campfire|sauna|wood-paneled|cozy scene|environment|setting|background|behind her|room|place|location|setting|surroundings)',
+            'lighting': r'(warm golden light|golden light|lighting|light|shadows|highlighting|sheen|illuminated|glow|sunlight|moonlight|ambient light|dramatic lighting)',
+            'mood': r'(joyful|playful|relaxed|confident|sensual|intimate|comfortable|warmth|laughter|enjoyment|happiness|pleasure|content|serene|peaceful|excited)',
+            'details': r'(radiating|playful|provocatively|subtle|sensuality|cozy|delicate|sweet|realistic|intimate|vivid|dynamic|expressive|natural|organic|fluid)'
+        }
+        
+        # Extract using patterns
+        for category, pattern in patterns.items():
+            matches = re.findall(pattern, description, re.IGNORECASE)
+            if matches:
+                elements[category].extend([match.lower() for match in matches if match])
+        
+        # Additional intelligent extraction from the full description
+        words = description.lower().split()
+        
+        # Extract more descriptive adjectives and details
+        descriptive_words = [
+            'radiating', 'playful', 'provocatively', 'relaxed', 'subtle', 'confident', 
+            'sensuality', 'cozy', 'delicate', 'sweet', 'realistic', 'intimate', 'comfortable',
+            'vivid', 'dynamic', 'expressive', 'natural', 'organic', 'fluid', 'graceful',
+            'elegant', 'powerful', 'soft', 'gentle', 'strong', 'feminine', 'masculine',
+            'youthful', 'mature', 'energetic', 'calm', 'serene', 'peaceful', 'intense'
+        ]
+        
+        for word in descriptive_words:
+            if word in words and word not in elements['details']:
+                elements['details'].append(word)
+        
+        # Extract specific details with better context awareness
+        detail_patterns = {
+            'squatting': r'(squats|squatting|low position|crouching)',
+            'campfire': r'(campfire|firelight|fire glow|bonfire)',
+            'sauna': r'(sauna|steam room|hot room|wooden sauna)',
+            'golden_light': r'(golden light|warm light|sunset glow|golden hour)',
+            'skin': r'(skin texture|skin details|pore details|skin sheen|skin glow)',
+            'hair': r'(hair flow|hair details|strands of hair|hair movement)',
+            'eyes': r'(eye details|sparkling eyes|expressive eyes|eye color)',
+            'environment': r'(wood-paneled|cozy|warm|intimate|comfortable|relaxing)'
+        }
+        
+        for detail_type, pattern in detail_patterns.items():
+            matches = re.findall(pattern, description, re.IGNORECASE)
+            if matches:
+                if detail_type == 'squatting':
+                    elements['pose'].append('squatting pose')
+                elif detail_type == 'campfire':
+                    elements['location'].append('around campfire')
+                    elements['lighting'].append('firelight glow')
+                elif detail_type == 'sauna':
+                    elements['location'].append('in sauna')
+                    elements['background'].append('steamy atmosphere')
+                elif detail_type == 'golden_light':
+                    elements['lighting'].append('golden hour lighting')
+                    elements['mood'].append('warm atmosphere')
+                elif detail_type == 'skin':
+                    elements['details'].append('detailed skin texture')
+                    elements['details'].append('skin pores visible')
+                elif detail_type == 'hair':
+                    elements['details'].append('detailed hair strands')
+                    elements['details'].append('hair movement')
+                elif detail_type == 'eyes':
+                    elements['details'].append('expressive eyes')
+                    elements['details'].append('detailed eye reflection')
+                elif detail_type == 'environment':
+                    for match in matches:
+                        if match not in elements['location']:
+                            elements['location'].append(match)
+        
+        # If no subject found, try to extract from beginning of description
+        if not elements['subject'] and len(words) > 2:
+            potential_subject = ' '.join(words[:3])
+            elements['subject'].append(potential_subject)
+        
+        # Build the enhanced prompt with richer content
+        prompt_parts = []
+        
+        # Subject with detailed attributes
+        if elements['subject']:
+            subject = elements['subject'][0]
+            if elements['details']:
+                prompt_parts.append(f"{', '.join(elements['details'][:5])} {subject}")
+            else:
+                prompt_parts.append(subject)
+        elif description.strip():  # Use the original description if no subject extracted
+            prompt_parts.append(description.strip())
+        
+        # Pose and action with more details
+        if elements['pose']:
+            pose_desc = ', '.join(elements['pose'][:3])
+            prompt_parts.append(f"{pose_desc} pose")
+        
+        # Location and background with context
+        if elements['location']:
+            location_desc = ', '.join(elements['location'][:3])
+            prompt_parts.append(f"in {location_desc}")
+        
+        # Lighting and mood with atmosphere
+        if elements['lighting']:
+            lighting_desc = ', '.join(elements['lighting'][:3])
+            prompt_parts.append(f"with {lighting_desc}")
+        
+        if elements['mood']:
+            mood_desc = ', '.join(elements['mood'][:3])
+            prompt_parts.append(f"{mood_desc} atmosphere")
+        
+        # Additional descriptive details
+        if elements['details'] and len(elements['details']) > 5:
+            extra_details = ', '.join(elements['details'][5:8])
+            prompt_parts.append(extra_details)
+        
+        # Style-specific enhancements with more variety
+        if style_main == 'realistic':
+            prompt_parts.extend([
+                'photorealistic', 'high detail', 'sharp focus', 'professional photography',
+                'ultra detailed', 'intricate details', 'texture details', 'realistic shadows',
+                'accurate proportions', 'natural lighting', 'professional composition'
+            ])
+            if style_sub != 'any':
+                prompt_parts.append(style_sub + ' photography')
+        elif style_main == 'anime':
+            anime_style = kwargs.get('anime_style', 'ghibli')
+            prompt_parts.extend([
+                f'{anime_style} anime style', 'detailed', 'high quality', 'expressive',
+                'vibrant colors', 'clean lines', 'anime aesthetic', 'character design',
+                'expressive features', 'dynamic posing', 'anime art'
+            ])
+        
+        # Enhanced quality tags
+        quality_tags = [
+            'masterpiece', 'best quality', '8k', 'ultra detailed', 'high resolution',
+            'professional art', 'award winning', 'trending on artstation', 'unreal engine',
+            'octane render', 'concept art', 'digital painting', 'illustration'
+        ]
+        prompt_parts.extend(quality_tags)
+        
+        # Combine all parts with better flow
+        enhanced_prompt = ', '.join([part for part in prompt_parts if part])
+        
+        # Ensure the prompt is rich and detailed
+        if len(enhanced_prompt.split(',')) < 12:
+            # Add more descriptive elements focusing on details and quality
+            additional_enhancements = [
+                'detailed background', 'intricate details', 'texture details',
+                'depth of field', 'cinematic lighting', 'dynamic composition',
+                'professional shot', 'sharp details', 'high contrast', 'vivid colors',
+                'atmospheric effects', 'environmental details', 'focus on subject'
+            ]
+            enhanced_prompt += ', ' + ', '.join(additional_enhancements)
+        
+        # Remove any duplicate phrases while preserving order
+        seen = set()
+        unique_parts = []
+        for part in enhanced_prompt.split(', '):
+            if part not in seen:
+                seen.add(part)
+                unique_parts.append(part)
+        
+        enhanced_prompt = ', '.join(unique_parts)
+        
+        return enhanced_prompt
     
     def format_for_model(self, prompt: str, target_model: str, kwargs: Dict[str, Any]) -> str:
         """

@@ -1,7 +1,12 @@
 const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
+const { getLlama, LlamaChatSession } = require("node-llama-cpp");
 // Consider app.isPackaged to detect dev reliably when running `electron .`
 const isDev = !app.isPackaged;
+
+// LLM variables
+let llama;
+let model;
 
 const DEFAULT_CONTEXT_SIZE = 2048; // było 512 – zwiększamy dla stabilności narracji
 const DEFAULT_MAX_NEW_TOKENS = 256;
@@ -49,7 +54,7 @@ function createWindow() {
 
   // Load the app
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.loadURL('http://localhost:5174');
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
   } else {
@@ -71,7 +76,7 @@ function createWindow() {
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl);
     
-    if (parsedUrl.origin !== 'http://localhost:5173' && !navigationUrl.startsWith('file://')) {
+    if (parsedUrl.origin !== 'http://localhost:5174' && !navigationUrl.startsWith('file://')) {
       event.preventDefault();
       shell.openExternal(navigationUrl);
     }
@@ -90,26 +95,61 @@ ipcMain.handle('llm-request', async (_event, args) => {
   const stops = unifyStop(payload?.stop);
 
   let text = '';
-  let rawText = '';
   try {
-    // Placeholder generation: echo back prompt for now or use payload.rawText if provided
-    rawText = typeof payload?.rawText === 'string' ? payload.rawText : String(prompt);
-    text = rawText != null ? String(rawText) : '';
-  } catch (e) {
-    console.error('Model generation error:', e);
-    throw e;
+    // Initialize llama if not already initialized
+    if (!llama) {
+      await initializeLlama();
+    }
+
+    // Create a new session for this request
+    const context = await model.createContext({ threads: 4 });
+    const session = new LlamaChatSession({ context });
+
+    // Set generation parameters
+    const generationOptions = {
+      temperature,
+      topP: top_p,
+      maxTokens: maxTokens,
+      stopSequences: stops
+    };
+
+    // Generate response using the model
+    const response = await session.prompt(prompt, generationOptions);
+    text = response;
+
+    console.log('LLM response generated:', text.substring(0, 100) + '...');
+  } catch (error) {
+    console.error('LLM generation error:', error);
+    // Fallback to placeholder if LLM fails
+    text = prompt;
   }
 
   // Trim only at the first occurrence of any stop sequence; if none found, keep full text
   text = trimAtStopSequences(text, stops);
 
-  // If trimming resulted in empty text, fall back to original raw text
-  if (!text || text.trim().length === 0) {
-    text = rawText;
-  }
-
   return text;
 });
+
+// Initialize Llama model
+async function initializeLlama() {
+  try {
+    console.log('Initializing Llama model...');
+    llama = await getLlama();
+    
+    // Load a model - you can change this to your preferred model path
+    const modelPath = process.env.LLAMA_MODEL_PATH || './models/gemma-3-12b-it-abliterated.q4_k_m.gguf';
+    model = await llama.loadModel({
+      modelPath: modelPath,
+      gpuLayers: 'max' // Pełne wykorzystanie GPU dla modelu 12B
+    });
+    
+    console.log('Llama model loaded successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize Llama:', error);
+    throw error;
+  }
+}
 
 // Create application menu
 function createMenu() {
