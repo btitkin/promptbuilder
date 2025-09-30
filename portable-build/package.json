@@ -1,0 +1,20 @@
+{
+  "name": "prompt-builder-portable",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Portable AI-powered prompt builder for image generation with local LLM support",
+  "author": "btitkin",
+  "type": "module",
+  "main": "main.js",
+  "homepage": "./",
+  "scripts": {
+    "start": "electron .",
+    "install-deps": "npm install electron --save-dev"
+  },
+  "dependencies": {
+    "node-llama-cpp": "^3.13.0"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7"
+  }
+}

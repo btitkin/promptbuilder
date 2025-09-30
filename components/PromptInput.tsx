@@ -1,24 +1,25 @@
 
 
 import React, { useRef } from 'react';
-import { LoadingSpinnerIcon, MagicWandIcon, DiceIcon, BookmarkIcon, LockClosedIcon } from './icons';
+import { LoadingSpinnerIcon, DiceIcon, BookmarkIcon, LockClosedIcon, KeyIcon } from './icons';
 
 interface PromptInputProps {
   value: string;
   onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onGenerate: () => void;
-  onEnhance: () => void;
   onRandom: () => void;
+  onAIImagination: () => void;
   isLoading: boolean;
-  isEnhancing: boolean;
   isGeneratingRandom: boolean;
   onSaveSnippet: (content: string) => void;
   onLockSelection?: (text: string) => void;
+  lockedPhrases?: string[];
+  onRemoveLockedPhrase?: (text: string) => void;
 }
 
-export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGenerate, onEnhance, onRandom, isLoading, isEnhancing, isGeneratingRandom, onSaveSnippet, onLockSelection }) => {
+export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGenerate, onRandom, onAIImagination, isLoading, isGeneratingRandom, onSaveSnippet, onLockSelection, lockedPhrases, onRemoveLockedPhrase }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const anyLoading = isLoading || isEnhancing || isGeneratingRandom;
+  const anyLoading = isLoading || isGeneratingRandom;
 
   const getSelectionText = () => {
     const textarea = textareaRef.current;
@@ -126,6 +127,16 @@ export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGen
           Enter your simple description
         </label>
         <div className="flex items-center gap-2">
+          <button
+            onClick={onGenerate}
+            disabled={anyLoading}
+            className={textButtonClass}
+            title="Compile final prompt for selected model"
+            data-testid="btn-generate-prompt"
+          >
+            {isLoading ? <LoadingSpinnerIcon /> : <KeyIcon />}
+            Generate Prompt
+          </button>
            <button onClick={() => handleTextTransform('increase')} disabled={anyLoading} className={controlButtonClass} title="Increase weight of selected text (e.g., (word:1.1))">
              <span className="font-bold text-lg leading-none">(+)</span>
            </button>
@@ -151,22 +162,47 @@ export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGen
             onClick={onRandom}
             disabled={anyLoading}
             className={textButtonClass}
-            title="Generate a random description based on your settings"
+            title="Generate a list of keywords based on the current settings"
+            data-testid="btn-generate-keywords"
+          >
+            {isGeneratingRandom ? <LoadingSpinnerIcon /> : <KeyIcon />}
+            Generate Keywords
+          </button>
+
+          <button
+            onClick={onAIImagination}
+            disabled={anyLoading}
+            className={textButtonClass}
+            title="Generate creative inspiration with AI imagination"
+            data-testid="btn-ai-imagination"
           >
             {isGeneratingRandom ? <LoadingSpinnerIcon /> : <DiceIcon />}
-            Random
-          </button>
-          <button
-            onClick={onEnhance}
-            disabled={anyLoading || !value}
-            className={textButtonClass}
-            title="Enhance your current description with more detail"
-          >
-            {isEnhancing ? <LoadingSpinnerIcon /> : <MagicWandIcon />}
-            Enhance
+            AI Imagination
           </button>
         </div>
       </div>
+
+      {lockedPhrases && lockedPhrases.length > 0 && (
+        <div className="mt-2">
+          <label className="block text-xs font-medium text-gray-400 mb-1">Locked Phrases</label>
+          <div className="flex flex-wrap gap-2">
+            {lockedPhrases.map((p) => (
+              <span key={p} className="inline-flex items-center bg-gray-700 text-indigo-300 rounded-full px-2 py-1 text-xs">
+                <span className="max-w-[260px] truncate">{p}</span>
+                <button
+                  onClick={() => onRemoveLockedPhrase && onRemoveLockedPhrase(p)}
+                  className="ml-2 rounded-full hover:bg-indigo-500/20 text-indigo-300 hover:text-indigo-200 px-2"
+                  title="Remove lock"
+                  disabled={anyLoading}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <textarea
         ref={textareaRef}
         id="description"
@@ -180,7 +216,8 @@ export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGen
       <button
         onClick={onGenerate}
         disabled={anyLoading || !value}
-        className="w-full flex justify-center items-center gap-2 bg-accent text-white font-bold py-3 px-4 rounded-md hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+        className="w-full flex justify-center items-center gap-2 bg-accent text-white font-bold py-3 px-4 rounded-md hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent disabled:bg-gray-600 disabled:cursor-not-allowed transition-colo..."
+        data-testid="btn-generate"
       >
         {isLoading ? (
           <>

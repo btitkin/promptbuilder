@@ -16,18 +16,41 @@ interface ApiSettingsProps {
 const PROVIDERS = ([
     { id: 'claude', label: 'Anthropic (Claude)', docUrl: 'https://console.anthropic.com/settings/keys' },
     { id: 'cohere', label: 'Cohere', docUrl: 'https://dashboard.cohere.com/api-keys' },
-    { id: 'custom_local', label: 'Custom/Local API', docUrl: 'https://docs.mistral.ai/getting-started/quickstart/' },
+    { id: 'custom_local', label: 'Local (Electron, GGUF)', docUrl: 'https://github.com/btitkin/promptbuilder' },
     { id: 'deepseek', label: 'Deepseek', docUrl: 'https://platform.deepseek.com/api_keys' },
     { id: 'google_gemini', label: 'Google Gemini', docUrl: 'https://aistudio.google.com/app/apikey' },
     { id: 'groq', label: 'Groq', docUrl: 'https://console.groq.com/keys' },
     { id: 'openai', label: 'OpenAI (GPT)', docUrl: 'https://platform.openai.com/api-keys' },
     { id: 'perplexity', label: 'Perplexity', docUrl: 'https://docs.perplexity.ai/docs/getting-started' },
     { id: 'together', label: 'Together AI', docUrl: 'https://api.together.ai/settings/api-keys' },
+    { id: 'qwen', label: 'Qwen (via Custom API)', docUrl: 'https://github.com/QwenLM/Qwen' },
 ] as { id: ApiProvider; label: string; docUrl: string }[]).sort((a, b) => a.label.localeCompare(b.label));
 
 export const ApiSettings: React.FC<ApiSettingsProps> = ({ isOpen, onToggle, config, onChange }) => {
   const handleProviderChange = (provider: ApiProvider) => {
-    onChange({ ...config, provider });
+    // For local Electron GGUF provider, do NOT set customConfig to avoid HTTP fallback
+    if (provider === 'custom_local') {
+      onChange({
+        ...config,
+        provider,
+        customConfig: undefined,
+      });
+      return;
+    }
+    // For Qwen via external Custom API, ensure customConfig object exists
+    if (provider === 'qwen') {
+      onChange({
+        ...config,
+        provider,
+        customConfig: config.customConfig || { url: '', key: '', model: '' },
+      });
+      return;
+    }
+    // Other providers keep current config
+    onChange({
+      ...config,
+      provider,
+    });
   };
   
   const handleKeyChange = (key: string) => {
@@ -85,14 +108,14 @@ export const ApiSettings: React.FC<ApiSettingsProps> = ({ isOpen, onToggle, conf
             </select>
           </div>
           
-          {config.provider === 'custom_local' ? (
+          {config.provider === 'qwen' ? (
             <div className="space-y-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <label htmlFor="custom-url" className="block text-sm font-medium text-gray-400">
-                    API Base URL
+                    API Base URL (OpenAI-compatible)
                   </label>
-                  <InfoTooltip text="The base URL of your local LLM API (e.g., http://localhost:11434 for Ollama)" />
+                  <InfoTooltip text="Base URL of your OpenAI-compatible server (e.g., http://localhost:11434)" />
                 </div>
                 <input
                   type="text"
@@ -109,13 +132,13 @@ export const ApiSettings: React.FC<ApiSettingsProps> = ({ isOpen, onToggle, conf
                   <label htmlFor="custom-model" className="block text-sm font-medium text-gray-400">
                     Model Name
                   </label>
-                  <InfoTooltip text="The name of the model to use (e.g., mistral, llama2, codellama)" />
+                  <InfoTooltip text="The name of the model to use (e.g., qwen, mistral, llama3)" />
                 </div>
                 <input
                   type="text"
                   id="custom-model"
                   className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md shadow-sm p-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent font-mono"
-                  placeholder="mistral"
+                  placeholder="Qwen2.5-7B-Instruct-Q4_K_M"
                   value={config.customConfig?.model || ''}
                   onChange={(e) => handleCustomConfigChange('model', e.target.value)}
                 />
@@ -126,7 +149,7 @@ export const ApiSettings: React.FC<ApiSettingsProps> = ({ isOpen, onToggle, conf
                   <label htmlFor="custom-key" className="block text-sm font-medium text-gray-400">
                     API Key (Optional)
                   </label>
-                  <InfoTooltip text="API key if your local server requires authentication" />
+                  <InfoTooltip text="Api key if your local server requires authentication" />
                 </div>
                 <input
                   type="password"
@@ -140,7 +163,7 @@ export const ApiSettings: React.FC<ApiSettingsProps> = ({ isOpen, onToggle, conf
               
               {currentProviderInfo && (
                 <a href={currentProviderInfo.docUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-indigo-400 hover:underline">
-                  How to set up local LLM with Ollama/Mistral?
+                  How to set up Qwen with an OpenAI-compatible server?
                 </a>
               )}
             </div>
@@ -150,7 +173,7 @@ export const ApiSettings: React.FC<ApiSettingsProps> = ({ isOpen, onToggle, conf
                 <label htmlFor="api-key" className="block text-sm font-medium text-gray-400">
                   API Key for {currentProviderInfo?.label}
                 </label>
-                <InfoTooltip text="The key used to authenticate with the selected AI provider." />
+                <InfoTooltip text="The key used to authenticate with the selected Ai provider." />
               </div>
               <input
                 type="password"

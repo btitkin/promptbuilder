@@ -3,9 +3,24 @@ import type {
   StyleFilter,
   StructuredPrompt,
   CharacterSettingsState,
-  CustomApiConfig
+  CustomApiConfig,
+  PromptVariationsResult,
+  Gender,
+  FemaleBodyType,
+  MaleBodyType,
+  HeightRange,
+  AgeRange,
+  BreastSize,
+  HipsSize,
+  ButtSize,
+  PenisSize,
+  MuscleDefinition,
+  FacialHair,
+  AdvancedSettingsState
 } from '../types';
 import { invokeLLM, isElectronAvailable } from './electronService';
+import { cleanLLMText, normalizeNarrative as normalizeNarrativeCentral, normalizeToTagsLine as normalizeToTagsLineCentral } from './sanitizer';
+import { MODELS } from '../constants';
 
 // Optional generation options for local/external calls
 type GenOptions = {
@@ -13,6 +28,10 @@ type GenOptions = {
   top_p?: number;
   maxTokens?: number;
   stop?: string[];
+  // If true, bypass Electron local LLM even when available and use external HTTP API instead
+  forceExternal?: boolean;
+  // Optional timeout in milliseconds for the whole generation call
+  timeoutMs?: number;
 };
 
 const STOP_SEQS = ['<<EOD>>'];
@@ -36,170 +55,34 @@ const buildTheBlokePrompt = (systemText: string | undefined, userText: string): 
 
 // Helper function to clean LLM output (bezpieczne regexy — bez wrażliwych sekwencji typu ```math w stringach)
 export const cleanTextResponse = (text: string): string => {
-  let cleaned = (text ?? '').toString();
-
-  cleaned = cleaned
-    // Usuń cytaty i znaki '>' na początku linii (cytowanie, jak na zrzutach)
-    .replace(/^\s*>+\s*/gm, '')
-    // Usuń znacznikowe role i dialogi (ASSISTANT:, USER:, SYSTEM:)
-    .replace(/^\s*(ASSISTANT|USER|SYSTEM)\s*:\s*/gim, '')
-    // Usuń warianty nawiasowe typu (Scene description)
-    .replace(/^\s*\(scene\s+description\)\s*[:\-]?\s*/gim, '')
-    // generic prefix like "Label:"
-    .replace(/^\s*[\w\s'-]+:\s*/im, '');
-
-  return cleaned;
+  return cleanLLMText(text ?? '');
 };
 
 export function normalizeNarrative(text: string): string {
-  // Zacznij od ogólnego czyszczenia, które usuwa role, cytaty '>' i większość znaczników
-  let s = cleanTextResponse(text ?? '');
-
-  // Usuń cytowania '>' i role oraz (Scene description) – (zostawione dla pewności po wstępnym czyszczeniu)
-  s = s.replace(/^\s*>+\s*/gm, '');
-  s = s.replace(/^\s*(ASSISTANT|USER|SYSTEM)\s*:\s*/gim, '');
-  s = s.replace(/^\s*\(scene\s+description\)\s*[:\-]?\s*/gim, '');
-
-  // Usuń code fences i pseudo-XML
-  s = s.replace(/```[\s\S]*?```/g, ' ').replace(/<[^>]*>/g, ' ');
-
-  // Usuń bracket tokens i ogólne nawiasowe tagi [SYS], [/EOD], [INST], [INSTR], itp.
-  s = s.replace(/\[(?:\/)?(?:SYS|SYSTEM|EOD|INST|INSTR|OOC)\]/gi, '');
-  // Dodatkowo: usuń dowolne krótkie uppercase tagi w nawiasach kwadratowych, np. [XYZ], [/ABC]
-  s = s.replace(/\[(?:\/)?[A-Z]{2,10}\]/g, '');
-
-  // Usuń zdania/reguły o asystencie/AI
-  s = s.replace(/^\s*(you are|you're|as an(?:\s+ai|\s+assistant)?|i am|i'm)\b[^.]*\.\s*/gi, '');
-  s = s.replace(/^\s*(Always answer|If a question|explain why instead).*?[.!?]\s*/gi, '');
-
-  // Usuń linie/zdania będące echem instrukcji promptu
-  const instructionLike = [
-    /^(please\s+)?create\s+a\s+visual\s+scene\s+description/i,
-    /^(please\s+)?write\s+one\s+paragraph/i,
-    /^do\s+not\b/i,
-    /^describe\s+only\b/i,
-    /^(please\s+)?describe\s+(?:the\s+)?scene\b/i,
-    /^start\s+(directly|immediately)\b/i,
-    /^end\s+the\s+description\b/i,
-    /^return\s+only\b/i,
-    /^bad\s*:/i,
-    /^good\s*:/i,
-    /^note\s*:/i
-  ];
-
-  // Usuń wiodące zdanie-instrukcję, nawet gdy opis jest dalej w tej samej linii
-  s = s.replace(/^\s*(?:please\s+)?describe\s+(?:the\s+)?scene\b.*?[.!?:]\s*/i, '');
-  s = s.replace(/^\s*(?:please\s+)?create\s+a\s+visual\s+scene\s+description\b.*?[.!?:]\s*/i, '');
-
-  s = s
-    .split(/\r?\n+/)
-    .map(line => line.trim())
-    .filter(line => line && !instructionLike.some(rx => rx.test(line)))
-    .join(' ');
-
-  // Usuń wstępne numerowanie/listy
-  s = s.replace(/^\s*\(?\d+\)?[.)]\s+/, '');
-
-  // Wyciągnij to co po Scene:/Description: jeśli istnieje
-  const sceneIdx = s.search(/\b(scene|description)\s*:/i);
-  if (sceneIdx >= 0) {
-    s = s.slice(s.indexOf(':', sceneIdx) + 1);
-  }
-
-  // Jeśli pojawił się wzorzec USER: ... ASSISTANT: ... -> weź fragment po USER:
-  const userIdx = s.search(/\bUSER:\s*/i);
-  if (userIdx >= 0) {
-    const afterUser = s.slice(s.indexOf(':', userIdx) + 1).trim();
-    if (afterUser && !afterUser.match(/^\s*(ASSISTANT:|\[\/?INST\]|<\/?)/)) {
-      s = afterUser;
-    }
-  }
-
-  // Usuń prefiks Tags:
-  s = s.replace(/^\s*tags?\s*:\s*[^\n]*\)\s*[-–—:]?\s*/i, '');
-
-  // Redukcja białych znaków i lini
-  s = s.replace(/\r?\n+/g, ' ').replace(/\s{2,}/g, ' ').trim();
-
-  // Zatrzymaj do 3 pierwszych zdań
-  const sentences = s.split(/(?<=[.!?])\s+/).filter(Boolean);
-  if (sentences.length > 3) {
-    s = sentences.slice(0, 3).join(' ');
-  }
-
-  // Dopnij kropkę jeśli brak
-  if (!/[.!?]"?$/.test(s) && s.length > 0) {
-    s += '.';
-  }
-
-  return s;
+  return normalizeNarrativeCentral(text ?? '');
 }
 
 // Convert any noisy/multiline output into a single, comma-separated tag line suitable for the UI
 const normalizeToTagsLine = (text: string, maxTags: number = 45): string => {
-  let s = cleanTextResponse(text);
-
-  // Usuń tylko najbardziej oczywiste prefiksy
-  s = s.replace(/^(Here are some|Here's a|Tags:|Image tags:|Prompt:|Description:)\s*/i, '');
-  s = s.replace(/^(I'll create|I can suggest|Let me generate).*?:\s*/i, '');
-  
-  // Usuń zdania wyjaśniające - ale tylko kompletne zdania
-  s = s.replace(/\b(This prompt|These tags|The image)[^,]*?\./gi, '');
-  
-  // Usuń dziwne formatowanie z slashami - ale zachowaj więcej treści
-  s = s.replace(/\/([A-Za-z0-9]+)/g, '$1');
-  
-  // Usuń powtarzające się słowa
-  s = s.replace(/(\b\w+\b)\s+\1/gi, '$1');
-
-  // Convert common separators to commas
-  s = s.replace(/[;|]/g, ', ');
-  s = s.replace(/\r?\n+/g, ', ');
-
-  // Remove list markers and numeric bullets
-  s = s.replace(/(^|, )\s*(?:\(?\d+\)?[.)]|[-*•])\s+/g, '$1');
-
-  // Remove lingering role tokens if any
-  s = s.replace(/\b(?:OOC|SYS|SYSTEM|USER|ASSISTANT)\b\s*:?/gi, '');
-
-  // Normalize quotes/parentheses/backticks - ale zachowaj więcej
-  s = s.replace(/["'`]/g, '');
-
-  // Convert full stops to soft separators when they look like sentence breaks
-  s = s.replace(/\.(\s+|$)/g, ', ');
-
-  // Collapse duplicate commas/spaces
-  s = s.replace(/\s*,\s*/g, ', ');
-  s = s.replace(/(?:,\s*){2,}/g, ', ');
-
-  // Split, trim, dedupe, and cap length - ale bądź mniej restrykcyjny
-  const parts = s.split(',').map(t => t.trim()).filter(Boolean);
-  const seen = new Set<string>();
-  const tags: string[] = [];
-  for (const p of parts) {
-    let tag = p.replace(/\s{2,}/g, ' ').replace(/[.]+$/g, '').trim();
-    
-    // Usuń tylko najbardziej oczywiste prefiksy - ale zachowaj więcej treści
-    tag = tag.replace(/^(woman|man|pose|location|clothing|lighting|style|age|build)\s*:?\s*/i, '');
-    
-    if (!tag || tag.length < 1) continue;
-    
-    const key = tag.toLowerCase();
-    if (!seen.has(key)) {
-      seen.add(key);
-      tags.push(tag);
-    }
-    if (tags.length >= maxTags) break; // pozwól na większą gęstość
-  }
-
-  if (tags.length === 0) {
-    return 'portrait, single subject, natural light, shallow depth of field, cinematic lighting, high detail, sharp focus, photorealistic';
-  }
-
-  const result = tags.join(', ');
-  return result;
+  return normalizeToTagsLineCentral(text ?? '', maxTags);
 };
 
+// Helurystyka wykrywania śmieciowych odpowiedzi od modelu (gwiazdki, same znaki specjalne, bardzo krótkie itp.)
+export const isJunkOutput = (s: string): boolean => {
+  if (!s) return true;
+  const text = s.trim();
+  if (!text) return true;
+  // Same znaki specjalne/punktacja
+  if (/^[\s*._\-\/\\|]+$/.test(text)) return true;
+  // Długie powtórzenia tego samego znaku (np. *******)
+  if (/(.)\1{9,}/.test(text)) return true;
+  // Za mało znaków alfanumerycznych w stosunku do długości
+  const alphaNum = (text.match(/[A-Za-z\u00C0-\u017F0-9]/g) || []).length;
+  if (alphaNum / text.length < 0.3) return true;
+  // Bardzo krótkie treści po usunięciu spacji
+  if (text.replace(/\s+/g, '').length < 20) return true;
+  return false;
+};
 const extractJson = (text: string): any | null => {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
@@ -213,18 +96,34 @@ const extractJson = (text: string): any | null => {
   return null;
 };
 
+// Simple promise timeout wrapper
+const withTimeout = async <T>(p: Promise<T>, ms: number, label: string): Promise<T> => {
+  let timer: any;
+  try {
+    return await Promise.race<T>([
+      p,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms} ms`)), ms);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
 const makeApiCall = async (
   config: CustomApiConfig,
   messages: any[],
   opts?: GenOptions
 ): Promise<string> => {
   // Always use local LLM when available (Electron environment)
-  const electronAvailable = isElectronAvailable();
+  const electronAvailable = isElectronAvailable() && !opts?.forceExternal;
   
   const temperature = opts?.temperature ?? 0.6;
   const top_p = opts?.top_p ?? 0.9;
   const maxTokens = opts?.maxTokens ?? 512;
   const stop = opts?.stop ?? STOP_SEQS;
+  const timeoutMs = opts?.timeoutMs ?? (config as any)?.timeoutMs ?? 20000;
 
   if (electronAvailable) {
     const systemMessage = messages.find(m => m.role === 'system');
@@ -236,47 +135,77 @@ const makeApiCall = async (
       const prompt = buildTheBlokePrompt(
         (systemMessage.content ?? '').toString().trim(),
         safeUser
-      ).replace(/\s+/g, ' ').trim(); // kompaktuj białe znaki
-
-      // Używamy tylko prompt - main.js sam go obsłuży
-      return await invokeLLM('custom', {
-        prompt,
-        temperature,
-        top_p,
-        maxTokens,
-        stop
-      });
+      );
+      try {
+        const localResponse = await withTimeout(
+          invokeLLM('chatCompletion', {
+            prompt,
+            temperature,
+            top_p,
+            maxTokens,
+            stop
+          }),
+          timeoutMs,
+          'Local LLM chatCompletion'
+        );
+        return localResponse || '';
+      } catch (e) {
+        console.warn('Local LLM chatCompletion failed, will try external API:', e);
+        // fall through to external API below
+      }
     }
-    throw new Error('Invalid message format for local LLM');
   }
+
+  // Fallback to external HTTP API if not in Electron or local call failed/disabled
+  // Normalize base URL: handle common mistakes like using 'local' or missing protocol
+  let base = (config.url ?? '').trim();
+  if (!base || base === 'local' || base === '/local') {
+    base = 'http://localhost:11434';
+  } else if (!/^https?:\/\//i.test(base)) {
+    // If user typed e.g. 'localhost:11434' or '/localhost:11434'
+    base = `http://${base.replace(/^\//, '')}`;
+  }
+  base = base.replace(/\/$/, '');
+  const url = `${base}/v1/chat/completions`;
+  const body = {
+    model: config.model || 'Qwen2.5-7B-Instruct-Q4_K_M',
+    messages,
+    temperature,
+    top_p,
+    max_tokens: maxTokens,
+    stop
+  } as any;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(config.key ? { Authorization: `Bearer ${config.key}` } : {})
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
   
-  // Fallback to external API if not in Electron (should not happen in our case)
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+    if (!res.ok) {
+      const errTxt = await res.text();
+      throw new Error(`Custom API request failed: ${res.status} ${res.statusText} - ${errTxt}`);
+    }
   
-  if (config.key) {
-    headers['Authorization'] = `Bearer ${config.key}`;
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content ?? '';
+    return content;
+  } catch (e: any) {
+    if (e?.name === 'AbortError') {
+      throw new Error(`Custom API request timed out after ${timeoutMs} ms`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-
-  const response = await fetch(`${config.url}/v1/chat/completions`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      model: config.model,
-      messages,
-      temperature,
-      max_tokens: maxTokens,
-      stop
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Custom API error: ${response.status} ${response.statusText}`);
-  }
-
-  const data: any = await response.json();
-  return data.choices?.[0]?.message?.content || '';
 };
 
 export const generatePromptVariations = async (
@@ -287,7 +216,7 @@ export const generatePromptVariations = async (
   styleFilter: StyleFilter,
   selectedModel: string,
   characterSettings: CharacterSettingsState
-): Promise<{ structuredPrompts: StructuredPrompt[], negativePrompt: string }> => {
+): Promise<PromptVariationsResult> => {
   // Empty system prompt to avoid assistant-style responses
   const systemPrompt = ``;
   
@@ -326,6 +255,9 @@ Output format rules (STRICT):
     case 'female':
       rules += `\n- Gender Constraint: all individuals MUST be female.`;
       break;
+    case 'futanari':
+      rules += `\n- Gender Constraint: all individuals MUST be futanari (female with male genitalia).`;
+      break;
     case 'mixed':
       rules += `\n- Gender Constraint: include both male and female subjects.`;
       break;
@@ -342,20 +274,31 @@ Output format rules (STRICT):
   if (characterSettings.bodyType && characterSettings.bodyType !== 'any') {
     rules += `\n- Body Type Constraint: emphasize a '${characterSettings.bodyType}' build.`;
   }
+
+  // Overlays (modify appearance without changing core gender)
+  if (characterSettings.overlays?.furry) {
+    rules += `\n- Overlay: include subtle anthropomorphic animal traits (ears, tail) while keeping human anatomy.`;
+  }
+  if (characterSettings.overlays?.monster) {
+    rules += `\n- Overlay: include demonic/monster features (e.g., horns, fangs) while maintaining human physique.`;
+  }
+  if (characterSettings.overlays?.sciFi) {
+    rules += `\n- Overlay: include futuristic sci‑fi elements (technology, cybernetic augmentations, neon lighting).`;
+  }
   
   // Replace explicit style naming with an implicit guideline (no style tags in output)
   rules += `\n- Style Guideline: evoke the '${styleFilter.main}'${styleFilter.sub !== 'any' ? `/${styleFilter.sub}` : ''} aesthetic implicitly through vocabulary, lighting, composition, and mood — do not name style tags or genres.`;
   
-  // Update NSFW constraints to influence tone without printing labels like "NSFW" or numeric intensities
+  // SFW/NSFW/Hardcore policy (unified with Gemini)
   switch (nsfwSettings.mode) {
     case 'off':
-      rules += `\n- Content Guideline: safe-for-work tone; do not use the words 'SFW' or 'NSFW'.`;
+      rules += `\n- Content rule: MUST be SFW.`;
       break;
     case 'nsfw':
-      rules += `\n- Content Guideline: allow sensual undertones consistent with the requested level, but DO NOT write the words 'NSFW', 'intensity', or any numeric ratings.`;
+      rules += `\n- Content rule: sensual undertones allowed, around ${nsfwSettings.nsfwLevel}/10; avoid explicit mechanics or unsafe content.`;
       break;
     case 'hardcore':
-      rules += `\n- Content Guideline: explicit tone consistent with the requested level, but DO NOT write the words 'NSFW', 'intensity', or any numeric ratings.`;
+      rules += `\n- Content rule: can be explicit around ${nsfwSettings.hardcoreLevel}/10 but never illegal or unsafe.`;
       break;
   }
   
@@ -368,10 +311,11 @@ Output format rules (STRICT):
 
   try {
     const response = await makeApiCall(config, messages, {
-      temperature: 0.35,
-      top_p: 0.9,
-      maxTokens: 600, // krótsza odpowiedź => mniej ryzyka dryfu
-      stop: STOP_SEQS
+      temperature: 0.9, // allow creativity while staying coherent
+      top_p: 0.95,
+      maxTokens: 280,
+      stop: STOP_SEQS,
+      forceExternal: false
     });
     
     let cleanedResponse = cleanTextResponse(response);
@@ -560,7 +504,7 @@ export const enhanceDescription = async (
   characterSettings: CharacterSettingsState
 ): Promise<string> => {
   // Enhance should enrich the existing short description into a vivid paragraph (no tags)
-  const systemPrompt = '';
+  const systemPrompt = 'You are an expert Creative Writing Editor. Your job is to take a basic scene description and enrich it with vivid detail and narrative depth.';
 
   const focusParts: string[] = [];
   if (nsfwSettings.enhancePerson) focusParts.push('the person/subject');
@@ -571,12 +515,24 @@ export const enhanceDescription = async (
   const genderRule =
     characterSettings.gender === 'male' ? 'All depicted individuals MUST be male.' :
     characterSettings.gender === 'female' ? 'All depicted individuals MUST be female.' :
+    characterSettings.gender === 'futanari' ? 'All depicted individuals MUST be futanari (female with male genitalia).' :
     characterSettings.gender === 'mixed' ? 'Include both male and female individuals.' : '';
 
-  const contentPolicy =
-    nsfwSettings.mode === 'off' ? 'Content must be SFW.' :
-    nsfwSettings.mode === 'nsfw' ? `Suggestive NSFW is allowed up to intensity ~${nsfwSettings.nsfwLevel}/10; avoid explicit mechanics.` :
-    `Explicit content allowed up to intensity ~${nsfwSettings.hardcoreLevel}/10; avoid illegal or unsafe content.`;
+  // SFW/NSFW/Hardcore policy (unified with Gemini)
+  let contentPolicy: string;
+  switch (nsfwSettings.mode) {
+    case 'off':
+      contentPolicy = 'Content rule: MUST be SFW. Absolutely no nudity, sexual content, erotic or suggestive language, or fetishized descriptions.';
+      break;
+    case 'nsfw':
+      contentPolicy = `Content rule: sensual undertones allowed, around ${nsfwSettings.nsfwLevel}/10; avoid explicit mechanics or unsafe content.`;
+      break;
+    case 'hardcore':
+      contentPolicy = `Content rule: can be explicit around ${nsfwSettings.hardcoreLevel}/10 but never illegal or unsafe.`;
+      break;
+    default:
+      contentPolicy = 'Content rule: MUST be SFW.';
+  }
 
   const constraints: string[] = [];
   if (characterSettings.age !== 'any') constraints.push(`main subject age in '${characterSettings.age}'`);
@@ -587,96 +543,58 @@ export const enhanceDescription = async (
     if (characterSettings.hipsSize !== 'any') constraints.push(`hips size ${characterSettings.hipsSize}`);
     if (characterSettings.buttSize !== 'any') constraints.push(`butt size ${characterSettings.buttSize}`);
   }
+  if (characterSettings.gender === 'futanari') {
+    if (characterSettings.breastSize !== 'any') constraints.push(`breast size ${characterSettings.breastSize}`);
+    if (characterSettings.hipsSize !== 'any') constraints.push(`hips size ${characterSettings.hipsSize}`);
+    if (characterSettings.buttSize !== 'any') constraints.push(`butt size ${characterSettings.buttSize}`);
+    if (characterSettings.penisSize !== 'any' && (nsfwSettings.mode === 'nsfw' || nsfwSettings.mode === 'hardcore')) constraints.push(`penis size ${characterSettings.penisSize}`);
+  }
   if (characterSettings.gender === 'male') {
     if (characterSettings.muscleDefinition !== 'any') constraints.push(`musculature ${characterSettings.muscleDefinition}`);
     if (characterSettings.facialHair !== 'any') constraints.push(`facial hair ${characterSettings.facialHair}`);
     if (characterSettings.penisSize !== 'any' && (nsfwSettings.mode === 'nsfw' || nsfwSettings.mode === 'hardcore')) constraints.push(`penis size ${characterSettings.penisSize}`);
   }
 
-  const imaginationRule = nsfwSettings.aiImagination === false
-    ? 'Do not invent elements that are not implied by the user text.'
-    : 'You may add small, tasteful, coherent details that enhance clarity and mood, staying faithful to the user text.';
 
+
+  const creativeScopeRule = 'Creative scope: You MAY introduce tasteful imaginative elements (fantasy/sci-fi/surreal) and unexpected but coherent details, when they enrich the scene.';
   const styleRule = `Keep an overall '${styleFilter.main}' style${styleFilter.sub !== 'any' ? ` with '${styleFilter.sub}' accents` : ''}.`;
 
   const safeUser = truncateMiddle(cleanTextResponse(userInput), MAX_USER_INPUT_CHARS);
 
   const userContent = [
-    `You will rewrite and enrich the user's description into a single vivid paragraph (2–3 sentences, ~45–100 words).`,
-    `Stay faithful to the original meaning. ${focusLine}`,
-    genderRule,
-    contentPolicy,
-    imaginationRule,
+    'Your task is to generate a random yet logical character-focused scene. To do this, you will mentally select options from the categories listed below and then weave them into a compelling, descriptive paragraph.',
+    '',
+    'Follow this creation process:',
+    '1. Establish a Character: Randomly choose a foundation from categories like Fantasy Races, Roleplay Presets, or Character Style Presets.',
+    '2. Define their Look: Select fitting options from Clothing Presets, Hair Presets, and Physical Features.',
+    '3. Set the Scene: Place them in a location using Location Presets and set the mood with Time of Day and Atmospheric options.',
+    '4. Give them Life: Describe their posture using Pose Presets and their current state with Facial Expressions and Emotional States.',
+    '5. Add Details: Include relevant Props or Special Effects that complete the scene.',
+    '',
+    'Application constraints that MUST be respected:',
     styleRule,
+    genderRule,
     constraints.length ? `Constraints to respect: ${constraints.join(', ')}.` : '',
-    `Do NOT output tags, lists, bullet points, labels, headings, roles, or code fences.`,
-    `Output plain text only. End the description with ${SENTINEL} and write nothing after it.`,
-    `User description: ${safeUser}`
-  ].filter(Boolean).join(' ');
+    creativeScopeRule,
+    '',
+    'Now, execute this process and generate a new, random scene description.',
+    'Constraint: The focus must be on a character, not a generic landscape or creature. The final output must be ONLY the descriptive paragraph, with no extra text or explanations.',
+    `End your response with ${SENTINEL} and write nothing after it.`
+  ].filter(Boolean).join('\n');
 
   const messages = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userContent }
   ];
 
-  // Synthetic fallback builder: 2–3 zdania, respektuje ustawienia i Enhance Options
-  const buildSyntheticEnhancement = (
-    base: string,
-    nsfw: NsfwSettingsState,
-    style: StyleFilter,
-    character: CharacterSettingsState,
-    focus: string[]
-  ): string => {
-    const subject = character.gender === 'female' ? 'woman' : character.gender === 'male' ? 'man' : 'person';
-    const age = character.age && character.age !== 'any' ? `${character.age}` : '';
-    const ethnicity = character.ethnicity && character.ethnicity !== 'any' ? `${character.ethnicity}` : '';
-    const body = character.bodyType && character.bodyType !== 'any' ? `${character.bodyType} build` : '';
-
-    const styleTone = style.sub && style.sub !== 'any' ? `${style.main}/${style.sub}` : style.main;
-
-    const nsfwTone = nsfw.mode === 'off'
-      ? 'with a tasteful, understated mood'
-      : nsfw.mode === 'nsfw'
-        ? `with subtle, sensual undertones around ${nsfw.nsfwLevel}/10`
-        : `with a bold, intimate tone around ${nsfw.hardcoreLevel}/10 (never illegal or unsafe)`;
-
-    const details: string[] = [];
-    if (character.gender === 'female') {
-      if (character.breastSize && character.breastSize !== 'any') details.push(`a ${character.breastSize} bust`);
-      if (character.hipsSize && character.hipsSize !== 'any') details.push(`${character.hipsSize} hips`);
-      if (character.buttSize && character.buttSize !== 'any') details.push(`${character.buttSize} curves`);
-    }
-    if (character.gender === 'male') {
-      if (character.muscleDefinition && character.muscleDefinition !== 'any') details.push(`${character.muscleDefinition} musculature`);
-      if (character.facialHair && character.facialHair !== 'any') details.push(`${character.facialHair} facial hair`);
-      if (nsfw.mode !== 'off' && character.penisSize && character.penisSize !== 'any') details.push(`${character.penisSize} endowment`);
-    }
-
-    const personLineParts = [age, ethnicity, body, subject].filter(Boolean);
-    const baseIdea = base.trim().replace(/\s+/g, ' ');
-
-    const focusText = focus.includes('pose and action') ? 'their natural pose and subtle action,' : 'their presence,';
-    const locText = focus.includes('location/background and atmosphere') ? 'the evocative setting and atmosphere,' : 'the setting and ambient light,';
-
-    const sentence1 = `A ${personLineParts.join(' ')} ${nsfwTone}, seen ${focusText} set around ${baseIdea}.`;
-
-    const clothingHint = focus.includes('the person/subject') ? 'Clothing and features are described with tasteful specificity' : 'Details remain understated yet clear';
-    const lightingHint = `soft, ${styleTone} lighting shapes the scene while the background falls gently out of focus`;
-
-    const extra = details.length > 0 ? ` (${details.join(', ')})` : '';
-
-    const sentence2 = `${clothingHint}${extra}, and ${locText} enhance the mood; ${lightingHint}.`;
-
-    const text = `${sentence1} ${sentence2}`;
-    return normalizeNarrative(text);
-  };
-
   try {
     const response = await makeApiCall(config, messages, {
-      temperature: 0.85,
+      temperature: 0.9, // allow creativity while staying coherent
       top_p: 0.95,
-      maxTokens: 260,
-      stop: STOP_SEQS
+      maxTokens: 280,
+      stop: STOP_SEQS,
+      forceExternal: false
     });
 
     let cleaned = response.replace(new RegExp(`${SENTINEL}\\s*$`, 'i'), '').trim();
@@ -686,38 +604,13 @@ export const enhanceDescription = async (
       return cleaned;
     }
 
-    // Fallback: syntetyczny akapit 2–3 zdaniowy, zgodny z ustawieniami
-    return buildSyntheticEnhancement(safeUser, nsfwSettings, styleFilter, characterSettings, focusParts);
+    // Fallback: brief neutral narrative if output is unusable
+    return 'A thoughtfully composed scene unfolds with a vivid sense of place and atmosphere, inviting the viewer to imagine the story behind it.';
   } catch (error) {
     console.error('Local LLM error:', error);
-    return buildSyntheticEnhancement(safeUser, nsfwSettings, styleFilter, characterSettings, focusParts);
+    return 'A thoughtfully composed scene unfolds with a vivid sense of place and atmosphere, inviting the viewer to imagine the story behind it.';
   }
 };
-
-// Heurystyka wykrywania śmieciowych odpowiedzi od modelu (gwiazdki, same znaki specjalne, bardzo krótkie itp.)
-export const isJunkOutput = (s: string): boolean => {
-  if (!s) return true;
-  const text = s.trim();
-  if (!text) return true;
-  // Same znaki specjalne/punktacja
-  if (/^[\s*._\-\/\\|]+$/.test(text)) return true;
-  // Długie powtórzenia tego samego znaku (np. *******)
-  if (/(.)\1{9,}/.test(text)) return true;
-  // Za mało znaków alfanumerycznych w stosunku do długości
-  const alphaNum = (text.match(/[A-Za-z\u00C0-\u017F0-9]/g) || []).length;
-  if (alphaNum / text.length < 0.3) return true;
-  // Bardzo krótkie treści po usunięciu spacji
-  if (text.replace(/\s+/g, '').length < 20) return true;
-  return false;
-};
-
-// Prosty fallback opisowy
-function buildFallbackNarrative(elements: string[]): string {
-  const subject = elements.find(e => /woman|man/i.test(e)) || 'person';
-  const mood = elements.find(e => /(suggestive|explicit)/i.test(e)) ? 'with a bold, intimate mood' : 'with a calm, reflective mood';
-  const style = elements.find(e => /(cinematic|realistic|artistic|photorealistic|professional)/i.test(e)) || 'cinematic';
-  return `A ${subject} in a thoughtfully composed scene, ${mood}. Gentle, ${style} lighting shapes the subject while the background falls softly out of focus. The environment adds texture and depth, inviting the viewer into the moment.`;
-}
 
 export const generateRandomDescription = async (
   config: CustomApiConfig,
@@ -726,35 +619,429 @@ export const generateRandomDescription = async (
   characterSettings: CharacterSettingsState,
   selectedPresets: string[]
 ): Promise<string> => {
-  // Brak systemPrompt - żeby nie było asystenckiego preamble
-  const systemPrompt = ''; // pusty lub undefined
+  const systemInstruction = [
+    'You are an observer writing a factual, objective report. Your task is to describe a person and their surroundings using ONLY direct, neutral, and descriptive language. You avoid ALL subjective, emotional, or poetic words. You state facts only. You write in full sentences to form a single paragraph.'
+  ].join('\n');
 
-  // Baza elementów dla inspiracji
-  const baseElements: string[] = [];
-  if (characterSettings.gender === 'male') baseElements.push('man');
-  else if (characterSettings.gender === 'female') baseElements.push('woman');
+  // Helper: filter defaults like Any/Average/None/Unknown
+  const isDefault = (v?: string | null) => {
+    if (!v) return true;
+    const s = String(v).trim().toLowerCase();
+    return s === '' || s === 'any' || s === 'average' || s === 'none' || s === 'unknown';
+  };
+  const nsfwOn = nsfwSettings.mode !== 'off';
 
-  if (characterSettings.age && characterSettings.age !== 'any') baseElements.push(`${characterSettings.age}`);
-  if (characterSettings.ethnicity && characterSettings.ethnicity !== 'any') baseElements.push(`${characterSettings.ethnicity}`);
-  if (characterSettings.bodyType && characterSettings.bodyType !== 'any') baseElements.push(`${characterSettings.bodyType} build`);
-  baseElements.push(`${styleFilter.main}`);
-  if (styleFilter.sub && styleFilter.sub !== 'any') baseElements.push(`${styleFilter.sub}`);
-  if (nsfwSettings.mode === 'nsfw') baseElements.push('suggestive');
-  else if (nsfwSettings.mode === 'hardcore') baseElements.push('explicit');
-  if (selectedPresets.length > 0) baseElements.push(...selectedPresets);
+  const fixedConstraintsLines: string[] = [];
+  if (!isDefault(characterSettings.gender)) {
+    const g = characterSettings.gender;
+    const genderLabel = g === 'male' ? 'Male' : g === 'female' ? 'Female' : g === 'futanari' ? 'Futanari' : g === 'mixed' ? 'Mixed' : String(g);
+    fixedConstraintsLines.push(`Gender: ${genderLabel}`);
+  }
+  if (!isDefault(characterSettings.age)) {
+    fixedConstraintsLines.push(`Age: ${toAgePhrase(characterSettings.age as AgeRange)}`);
+  }
+  // Additional fixed constraints from UI
+  if (!isDefault(characterSettings.height)) {
+    fixedConstraintsLines.push(`Height: ${toHeightPhrase(characterSettings.height as HeightRange)}`);
+  }
+  if (!isDefault(characterSettings.bodyType)) {
+    fixedConstraintsLines.push(`Body Type: ${toBodyTypePhrase(characterSettings.gender as Gender, characterSettings.bodyType)}`);
+  }
+  if (!isDefault(characterSettings.ethnicity)) {
+    fixedConstraintsLines.push(`Ethnicity: ${characterSettings.ethnicity}`);
+  }
+  // Include hair color derived from selected presets if present
+  if (selectedPresets && selectedPresets.length) {
+    const HAIR_COLOR_PRESETS = new Set<string>([
+      'blonde hair', 'brown hair', 'black hair', 'red hair', 'auburn hair',
+      'silver hair', 'white hair', 'pink hair', 'blue hair', 'purple hair',
+      'green hair', 'rainbow hair', 'multicolored hair', 'ombre hair', 'balayage hair',
+      'highlights', 'lowlights', 'platinum blonde', 'strawberry blonde', 'ash blonde',
+      'jet black', 'crimson red', 'burgundy', 'neon pink', 'pastel blue',
+      'emerald green', 'iridescent hair', 'fire hair', 'ice hair', 'galaxy hair',
+      'two-tone hair', 'split hair color'
+    ]);
+    const toTitleCase = (s: string): string => s.replace(/\w\S*/g, (t) => t.charAt(0).toUpperCase() + t.slice(1));
+    const hairColorDerived = (() => {
+      for (const p of selectedPresets) {
+        const key = String(p).trim().toLowerCase();
+        if (HAIR_COLOR_PRESETS.has(key)) return toTitleCase(key);
+      }
+      return null;
+    })();
+    if (hairColorDerived) {
+      fixedConstraintsLines.push(`Hair Color: ${hairColorDerived}`);
+    }
+  }
+  // Sexual attributes included only when NSFW mode is on
+  if (nsfwOn && !isDefault(characterSettings.breastSize)) {
+    fixedConstraintsLines.push(`Breast Size: ${toBreastPhrase(characterSettings.breastSize as BreastSize)}`);
+  }
+  if (!isDefault(characterSettings.hipsSize)) {
+    fixedConstraintsLines.push(`Hips Size: ${toHipsPhrase(characterSettings.hipsSize as HipsSize)}`);
+  }
+  if (!isDefault(characterSettings.buttSize)) {
+    fixedConstraintsLines.push(`Butt Size: ${toButtPhrase(characterSettings.buttSize as ButtSize)}`);
+  }
+  if (nsfwOn && !isDefault(characterSettings.penisSize)) {
+    fixedConstraintsLines.push(`Penis Size: ${toPenisPhrase(characterSettings.penisSize as PenisSize)}`);
+  }
+  if (!isDefault(characterSettings.muscleDefinition)) {
+    fixedConstraintsLines.push(`Muscle Definition: ${toMusclePhrase(characterSettings.muscleDefinition as MuscleDefinition)}`);
+  }
+  if (!isDefault(characterSettings.facialHair)) {
+    fixedConstraintsLines.push(`Facial Hair: ${toFacialHairPhrase(characterSettings.facialHair as FacialHair)}`);
+  }
+  if (!isDefault(characterSettings.characterStyle)) {
+    fixedConstraintsLines.push(`Character Style: ${characterSettings.characterStyle}`);
+  }
+  if (!isDefault(characterSettings.roleplay)) {
+    fixedConstraintsLines.push(`Roleplay: ${characterSettings.roleplay}`);
+  }
+  if (characterSettings.overlays) {
+    const overlayFlags: string[] = [];
+    if (characterSettings.overlays.furry) overlayFlags.push('Furry');
+    if (characterSettings.overlays.monster) overlayFlags.push('Monster');
+    if (characterSettings.overlays.sciFi) overlayFlags.push('SciFi');
+    if (overlayFlags.length) {
+      fixedConstraintsLines.push(`Overlays: ${overlayFlags.join(', ')}`);
+    }
+  }
+  if (!isDefault(styleFilter?.main)) {
+    const styleParts = [`Main: ${styleFilter.main}`];
+    if (!isDefault(styleFilter.sub)) styleParts.push(`Sub: ${styleFilter.sub}`);
+    fixedConstraintsLines.push(`Style Filter: ${styleParts.join(', ')}`);
+  }
+  const nsfwAllowed = nsfwSettings.mode === 'off' ? 'Not allowed' : 'Allowed';
+  fixedConstraintsLines.push(`NSFW: ${nsfwAllowed}`);
 
-  const basePrompt = baseElements.join(', ');
+  const fixedConstraintsBlock = [
+    '<fixed_constraints>',
+    ...fixedConstraintsLines,
+    '</fixed_constraints>'
+  ].join('\n');
 
-  // Format-lock z sentinelem - TYLKO opis sceny, bez dialogów
+  console.log('[customApiService.generateRandomDescription] fixedConstraintsLines=', fixedConstraintsLines);
+  console.log('[customApiService.generateRandomDescription] fixedConstraintsBlock=\n' + fixedConstraintsBlock);
+  console.log('[customApiService.generateRandomDescription] nsfwSettings.mode=', nsfwSettings.mode, 'nsfwLevel=', nsfwSettings.nsfwLevel, 'hardcoreLevel=', nsfwSettings.hardcoreLevel, 'selectedPresets=', selectedPresets);
+
   const userContent = [
-    `Create a visual scene description using these elements: ${basePrompt}.`,
-    `Write one paragraph of 2–3 sentences (35–80 words) describing what you see in the scene.`,
-    `Do NOT write dialogue, questions, conversations, or responses. Do NOT output tags, lists, or labels.`,
-    `Describe only the visual scene - the person, their pose, setting, lighting, and atmosphere.`,
-    `End the description with ${SENTINEL} and write nothing after it.`,
-    `Bad: "Can you tell me about the woman?" or "Tags: woman, curvy"`,
-    `Good: "A young Japanese woman with a curvy build reclines against weathered wooden steps, her confident gaze meeting the camera. Warm golden light filters through nearby foliage, casting soft shadows across her skin and highlighting the natural curves of her pose."`
-  ].join(' ');
+    'You will generate a factual description of a character based on a set of fixed rules and randomized details.',
+    '',
+    "FIXED CONSTRAINTS: These are the character's non-negotiable attributes. You MUST use them exactly as provided. Use only qualitative descriptors. DO NOT include numeric measurements.",
+    fixedConstraintsBlock,
+    selectedPresets && selectedPresets.length ? `You MUST incorporate ALL of these presets/themes: ${selectedPresets.join(', ')}.` : '',
+    '',
+    'DICTION AND TONE RULES:',
+    'Objective Language Only: You are FORBIDDEN from using subjective or emotional adjectives. Do not use words like: beautiful, captivating, graceful, serene, enchanting, elegant, mysterious, alluring, dreamy, magical, stunning, breathtaking.',
+    'No Names or Personas: DO NOT invent a name for the character (e.g., Sarah, Lila). DO NOT assign a role or archetype (e.g., princess, muse).',
+    'No Numerical Body Measurements: You are strictly FORBIDDEN from using any numeric measurements (e.g., height in cm/ft, weight in kg/lbs, bust/waist/hip sizes, cup sizes). Use only qualitative descriptions.',
+    '',
+    'Now, generate a character description in English following all these rules.'
+  ].filter(Boolean).join('\n');
+
+  // Build standard chat messages for local/external LLM
+  const messages = [
+    { role: 'system', content: systemInstruction },
+    { role: 'user', content: userContent }
+  ];
+
+  try {
+    const response = await makeApiCall(config, messages, {
+      temperature: 0.7,
+      top_p: 0.9,
+      maxTokens: 360,
+      stop: STOP_SEQS
+    });
+
+    const text = cleanTextResponse(response);
+    let cleaned = normalizeNarrative(text).trim();
+    if (cleaned && cleaned.length > 5) {
+      return cleaned;
+    }
+  } catch (error) {
+    console.error('Local/External LLM error during random description generation:', error);
+  }
+  return 'The description focuses on the character and follows the required factual structure.';
+}
+
+// Helper: strip MidJourney-specific flags from generated text to avoid duplication/injection
+const stripMidJourneyFlags = (s: string): string => {
+  let out = s;
+  // Remove imagine prefix
+  out = out.replace(/\/?imagine\s+prompt:\s*/ig, '');
+  // Remove aspect ratio flags like --ar 16:9
+  out = out.replace(/\s*--ar\s+\d{1,2}:\d{1,2}\s*/ig, ' ');
+  // Remove seed flags like --seed 1234567890
+  out = out.replace(/\s*--seed\s+\d{1,10}\s*/ig, ' ');
+  // Remove stylize and quality flags to prevent duplication with Additional Parameters
+  out = out.replace(/\s*--stylize\s+\d{1,5}\s*/ig, ' ');
+  out = out.replace(/\s*--quality\s+\d{1,3}\s*/ig, ' ');
+  // Remove --no flag with following terms until next flag or end
+  out = out.replace(/\s*--no\s+(.+?)(?=\s+--|$)/ig, ' ');
+  // Cleanup excessive spaces and repeated commas
+  out = out.replace(/\s{2,}/g, ' ').replace(/,\s*,+/g, ',').replace(/,\s*,/g, ',');
+  return out.trim();
+};
+
+export const generatePromptWithGuidance = async (
+  config: CustomApiConfig,
+  sceneDescription: string,
+  targetModelName: string,
+  breakToggle: boolean,
+  advancedSettings?: AdvancedSettingsState
+): Promise<string> => {
+  const model = targetModelName;
+  const safeUser = truncateMiddle(cleanTextResponse(sceneDescription ?? ''), MAX_USER_INPUT_CHARS);
+
+  // Grouping per product requirement: Natural Language vs Keyword-based
+  const NATURAL_MODELS = new Set<string>([
+    'Google Imagen4',
+    'Flux',
+    'Illustrious',
+    'OpenAI', // DALL-E family
+    'Veo 3',
+    'SVD',
+    'CogVideoX',
+    'Hunyuan Video',
+    'LTXV',
+    'Wan Video'
+  ]);
+
+  const KEYWORD_MODELS = new Set<string>([
+    'SDXL',
+    'SD 1.5',
+    'Pony',
+    'MidJourney',
+    'Stable Cascade',
+    'Nano Banana',
+    'Gwen',
+    'AuraFlow',
+    'HiDream',
+    'Kolors',
+    'Lumina',
+    'Mochi',
+    'NoobAI',
+    'PixArt A/E'
+  ]);
+
+  let systemPrompt = '';
+  let userContent = '';
+  let mode: 'flux' | 'sdxl_flat' | 'sdxl_break' = 'flux';
+
+  // Decide variant:
+  if (NATURAL_MODELS.has(model)) {
+    // Natural language paragraph style (Flux-like). BREAK toggle ignored by design
+    mode = 'flux';
+    systemPrompt = 'You are a meticulous prompt engineer who specializes in converting descriptions into ready-to-use prompts for modern natural-language image/video models (e.g., Flux, Imagen, DALL·E).';
+    userContent = [
+      'Your task is to CONVERT, NOT SUMMARIZE, the following scene description into a clear, direct, and detailed instruction in natural prose. You MUST use all significant details, concepts, and descriptive words from the original text. Ensure the final output preserves the full context and richness of the original. The output should be a single, well-formed paragraph in English.',
+      '',
+      'Scene Description:',
+      `"${safeUser}"`,
+      '',
+      'Final Prompt:'
+    ].join('\n');
+  } else if (KEYWORD_MODELS.has(model)) {
+    // Keyword/tag style (SDXL-like). Respect BREAK toggle
+    if (breakToggle) {
+      mode = 'sdxl_break';
+      systemPrompt = 'You are a meticulous prompt engineer who specializes in creating structured prompts for advanced AI image generation, using the `BREAK` keyword to separate concepts.';
+      userContent = [
+        'Analyze the following description and break it down into logical thematic chunks (e.g., 1. Subject and appearance, 2. Action and pose, 3. Environment and lighting, 4. Overall style and composition). Convert each chunk into comma-separated keywords, and then join these chunks together using the `BREAK` keyword. It is crucial to be comprehensive and not omit details from the original text. The output must be a single line of text in English.',
+        '',
+        'Scene Description:',
+        `"${safeUser}"`,
+        '',
+        'SDXL Prompt with BREAKs:'
+      ].join('\n');
+    } else {
+      mode = 'sdxl_flat';
+      systemPrompt = 'You are a meticulous prompt engineer who specializes in extracting keywords for AI image generators like Stable Diffusion (SDXL).';
+      userContent = [
+        'Analyze the following description and extract a rich, diverse set of comma-separated keywords (without labels). Start with the subject and their defining traits, then include pose/action, clothing, hair, facial expression and emotion, environment/location, lighting/mood, composition/camera terms, and high-level style descriptors. The output must be a single line of text in English, with no headings or extra words.',
+        '',
+        'Scene Description:',
+        `"${safeUser}"`,
+        '',
+        'SDXL Keyword Prompt:'
+      ].join('\n');
+    }
+  } else {
+    // Unknown model -> default to natural prose
+    mode = 'flux';
+    systemPrompt = 'You are a skilled prompt engineer who rewrites descriptions into a single natural-language instruction.';
+    userContent = [
+      'Rewrite the following into one clear paragraph in English, preserving all important details and ensuring it instructs an image model precisely.',
+      '',
+      'Scene Description:',
+      `"${safeUser}"`,
+      '',
+      'Final Prompt:'
+    ].join('\n');
+  }
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userContent }
+  ];
+
+  const useBreak = mode === 'sdxl_break';
+
+  try {
+    const response = await makeApiCall(config, messages, {
+      temperature: 0.5,
+      top_p: 0.9,
+      maxTokens: 320,
+      stop: STOP_SEQS
+    });
+
+    let text = cleanTextResponse(response);
+
+    if (mode === 'flux') {
+      // Natural paragraph; just normalize
+      const base = normalizeNarrative(text);
+      return appendParamsIfNeeded(base, targetModelName, advancedSettings);
+    }
+
+    // SDXL styles -> reduce to keywords
+    const normalized = normalizeToTagsLine(text, 60);
+    const normalizedSanitized = model === 'MidJourney' ? stripMidJourneyFlags(normalized) : normalized;
+
+    if (useBreak) {
+      // Ensure presence of BREAK separation; if missing, try to intelligently insert
+      const parts = normalizedSanitized.split(/\s*BREAK\s*/i).filter(Boolean);
+      let base: string;
+      if (parts.length < 2) {
+        // Heuristic split: subject/appearance | action/pose | environment/lighting | style/composition
+        const segments = normalizedSanitized.split(',').map(s => s.trim()).filter(Boolean);
+        const quarter = Math.ceil(segments.length / 4);
+        const recomposed = [
+          segments.slice(0, quarter).join(', '),
+          segments.slice(quarter, 2 * quarter).join(', '),
+          segments.slice(2 * quarter, 3 * quarter).join(', '),
+          segments.slice(3 * quarter).join(', ')
+        ].filter(s => s.length > 0).join(' BREAK ');
+        base = recomposed;
+      } else {
+        base = parts.join(' BREAK ');
+      }
+      return appendParamsIfNeeded(base, targetModelName, advancedSettings);
+    }
+
+    return appendParamsIfNeeded(normalizedSanitized, targetModelName, advancedSettings);
+  } catch (error) {
+    console.error('Local LLM error during guided prompt generation:', error);
+    // Fallback: simple normalization based on chosen mode
+    const text = safeUser;
+    const base = (mode === 'flux') ? normalizeNarrative(text) : normalizeToTagsLine(text, 60);
+    return appendParamsIfNeeded(base, targetModelName, advancedSettings);
+  }
+};
+
+// Helper: append MidJourney-like params with validation
+function appendParamsIfNeeded(basePrompt: string, modelName: string, adv?: AdvancedSettingsState): string {
+  if (!adv) return basePrompt;
+  const modelCfg = MODELS[modelName];
+  const isMidJourney = modelName === 'MidJourney';
+
+  // Only act when model uses textual params
+  if (modelCfg?.paramStyle !== 'double-dash' && modelCfg?.negativePromptStyle !== 'param') {
+    return basePrompt;
+  }
+
+  const negativePrompt = (adv.negativePrompt || '').trim();
+  const aspectRatio = adv.aspectRatio || '';
+  const additionalParams = (adv.additionalParams || '').trim();
+  const seed = (adv.seed || '').trim();
+
+  if (isMidJourney) {
+    const allowedAr = new Set(['1:1','16:9','9:16','4:3','3:4']);
+    if (aspectRatio && aspectRatio !== 'none' && !allowedAr.has(aspectRatio)) {
+      throw new Error(`MidJourney: Unsupported aspect ratio "${aspectRatio}". Use one of 1:1, 16:9, 9:16, 4:3, 3:4`);
+    }
+    if (seed) {
+      const seedNum = Number(seed);
+      if (!Number.isInteger(seedNum) || seedNum < 0 || seedNum > 4294967295) {
+        throw new Error('MidJourney: Seed must be an integer between 0 and 4294967295');
+      }
+    }
+    if (/--(ar|seed|no)\b/i.test(additionalParams)) {
+      throw new Error('MidJourney: Do not include --ar/--seed/--no in Additional Parameters; they are added automatically');
+    }
+    if (negativePrompt.includes('--')) {
+      throw new Error('MidJourney: Negative Prompt must not contain parameter flags like --; use comma-separated terms only');
+    }
+  }
+
+  // Start with a clean base that may have had flags injected by the model
+  let baseClean: string = basePrompt;
+
+  // If using param-style negative prompt and base looks like tags, remove any exact negative tokens from base
+  if (modelCfg?.negativePromptStyle === 'param' && negativePrompt) {
+    const negTokens = negativePrompt
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean)
+      .map(t => t.toLowerCase());
+    if (negTokens.length > 0) {
+      const hasBreak = /\bBREAK\b/i.test(baseClean);
+      if (hasBreak) {
+        const chunks = baseClean.split(/\s*BREAK\s*/i).map(c => c.trim());
+        const filteredChunks = chunks.map(chunk => {
+          const parts = chunk.split(',').map(p => p.trim()).filter(Boolean);
+          const filtered = parts.filter(p => !negTokens.includes(p.toLowerCase()));
+          return filtered.join(', ');
+        });
+        baseClean = filteredChunks.join(' BREAK ');
+      } else if (baseClean.includes(',')) {
+        const parts = baseClean.split(',').map(p => p.trim()).filter(Boolean);
+        const filtered = parts.filter(p => !negTokens.includes(p.toLowerCase()));
+        baseClean = filtered.join(', ');
+      }
+    }
+  }
+
+  // Build param parts with deduplication for additionalParams flags
+  const parts: string[] = [];
+  if (modelCfg?.paramStyle === 'double-dash') {
+    if (aspectRatio && aspectRatio !== 'none') {
+      if (!/\s--ar\s+\d{1,2}:\d{1,2}\b/i.test(baseClean)) parts.push(`--ar ${aspectRatio}`);
+    }
+    if (seed) {
+      if (!/\s--seed\s+\d{1,10}\b/i.test(baseClean)) parts.push(`--seed ${seed}`);
+    }
+    if (additionalParams) {
+      const flagMatches = additionalParams.match(/--[a-z][\w-]*\s+[^\s]+/ig) || [];
+      const residual = additionalParams.replace(/--[a-z][\w-]*\s+[^\s]+/ig, '').trim();
+      const dedupedFlags = flagMatches.filter((f: string) => baseClean.toLowerCase().indexOf(f.toLowerCase()) === -1);
+      const extra: string[] = [];
+      if (dedupedFlags.length > 0) extra.push(dedupedFlags.join(' '));
+      if (residual) extra.push(residual);
+      if (extra.length > 0) parts.push(extra.join(' '));
+    }
+  }
+  if (modelCfg?.negativePromptStyle === 'param' && negativePrompt) {
+    if (!/--no\b/i.test(baseClean)) parts.push(`--no ${negativePrompt}`);
+  }
+
+  if (parts.length === 0) return baseClean;
+  return `${baseClean} ${parts.join(' ')}`.replace(/\s{2,}/g, ' ').trim();
+}
+export const generatePromptWithGuidanceLegacy = async (
+  config: CustomApiConfig,
+  sceneDescription: string,
+  targetModelName: string,
+  syntaxStyle: 'natural' | 'tagged'
+): Promise<string> => {
+  // Legacy kept for backward compatibility if needed
+  const safeUser = truncateMiddle(cleanTextResponse(sceneDescription ?? ''), MAX_USER_INPUT_CHARS);
+  const systemPrompt = syntaxStyle === 'natural'
+    ? 'Convert the description into one concise natural-language instruction paragraph.'
+    : 'Extract concise, diverse keywords suitable for SDXL-like models.';
+  const userContent = syntaxStyle === 'natural'
+    ? `Rewrite into a single paragraph in English:\n\n"${safeUser}"\n\nFinal Prompt:`
+    : `Extract comma-separated keywords in English (no labels):\n\n"${safeUser}"\n\nKeywords:`;
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -762,40 +1049,181 @@ export const generateRandomDescription = async (
   ];
 
   try {
-    // Parametry sampling dla maksymalnej różnorodności
-    const response = await makeApiCall(config, messages, {
-      temperature: 1.2 + (Math.random() * 0.3), // 1.2-1.5 z jitterem - wyższa temperatura dla większej kreatywności
-      top_p: 0.99, // większe top_p dla szerszego zakresu słów
-      maxTokens: 280, // więcej tokenów dla bogatszych opisów
-      stop: STOP_SEQS
-    });
-
-    // Usuń sentinel i normalizuj
-    let cleaned = response.replace(new RegExp(`${SENTINEL}\\s*$`, 'i'), '').trim();
-    
-    cleaned = normalizeNarrative(cleaned);
-
-    // Reject junk-like outputs as well (e.g., rows of dots/asterisks)
-    if (cleaned && cleaned.length > 5 && !isJunkOutput(cleaned)) {
-      return cleaned;
-    }
-    
-    // Fallback: syntetyczny opis bazujący na baseElements (rzadki przypadek)
-    const fallback = buildFallbackNarrative(baseElements);
-    return fallback;
-  } catch (error) {
-    console.error('Local LLM error:', error);
-    return buildFallbackNarrative(baseElements);
+    const response = await makeApiCall(config, messages, { temperature: 0.6, top_p: 0.9, maxTokens: 280, stop: STOP_SEQS });
+    const text = cleanTextResponse(response);
+    return syntaxStyle === 'natural' ? normalizeNarrative(text) : normalizeToTagsLine(text, 60);
+  } catch (e) {
+    return syntaxStyle === 'natural' ? normalizeNarrative(safeUser) : normalizeToTagsLine(safeUser, 60);
   }
 };
 
-export const generateImage = async (
+// Translator: map numeric/categorical attributes to descriptive phrases for constraints
+const toAgePhrase = (age: AgeRange): string => {
+  switch (age) {
+    case '18s': return 'young adult';
+    case '25s': return 'mid‑twenties';
+    case '30s': return 'thirties';
+    case '40s': return 'forties';
+    case '50s': return 'fifties';
+    case '60s': return 'sixties';
+    case '70+': return 'seventies or older';
+    default: return 'adult';
+  }
+};
+
+const toHeightPhrase = (height: HeightRange): string => {
+  switch (height) {
+    case 'very short': return 'very short';
+    case 'short': return 'short';
+    case 'average': return 'average height';
+    case 'tall': return 'tall';
+    default: return String(height);
+  }
+};
+
+const toBreastPhrase = (size: BreastSize): string => {
+  switch (size) {
+    case 'flat': return 'flat chest';
+    case 'small': return 'small breasts';
+    case 'medium': return 'medium breasts';
+    case 'large': return 'large breasts';
+    case 'huge': return 'huge breasts';
+    case 'gigantic': return 'gigantic breasts';
+    default: return String(size);
+  }
+};
+
+const toHipsPhrase = (size: HipsSize): string => {
+  switch (size) {
+    case 'narrow': return 'slender hips';
+    case 'average': return 'average hips';
+    case 'wide': return 'wide hips';
+    case 'extra wide': return 'extra-wide hips';
+    default: return String(size);
+  }
+};
+
+const toButtPhrase = (size: ButtSize): string => {
+  switch (size) {
+    case 'flat': return 'a flat butt';
+    case 'small': return 'a small butt';
+    case 'average': return 'an average butt';
+    case 'large': return 'a large butt';
+    case 'bubble': return 'a bubble butt';
+    default: return String(size);
+  }
+};
+
+const toBodyTypePhrase = (gender: Gender, bodyType: CharacterSettingsState['bodyType']): string => {
+  if (bodyType === 'any') return '';
+  const femaleLike = gender === 'female' || gender === 'futanari' || gender === 'trans female' || gender === 'nonbinary';
+  if (femaleLike) {
+    switch (bodyType as FemaleBodyType | 'any') {
+      case 'slim': return 'a slender build';
+      case 'curvy': return 'a soft and curvy body';
+      case 'athletic': return 'a slender and athletic build';
+      case 'instagram model': return 'a slim‑thick, hourglass figure';
+      default: return String(bodyType);
+    }
+  } else {
+    switch (bodyType as MaleBodyType | 'any') {
+      case 'slim': return 'a slender build';
+      case 'fat': return 'a heavy‑set build';
+      case 'muscular': return 'a muscular build';
+      case 'big muscular': return 'a massive, bodybuilder physique';
+      default: return String(bodyType);
+    }
+  }
+};
+
+const toPenisPhrase = (size: PenisSize): string => {
+  switch (size) {
+    case 'small': return 'a small penis';
+    case 'average': return 'an average penis';
+    case 'large': return 'a large penis';
+    case 'huge': return 'a huge penis';
+    case 'horse-hung': return 'a horse‑hung penis';
+    default: return String(size);
+  }
+};
+
+const toMusclePhrase = (def: MuscleDefinition): string => {
+  switch (def) {
+    case 'soft': return 'soft musculature';
+    case 'toned': return 'toned musculature';
+    case 'defined': return 'well‑defined muscles';
+    case 'ripped': return 'a ripped physique';
+    case 'bodybuilder': return 'bodybuilder‑level musculature';
+    default: return String(def);
+  }
+};
+
+const toFacialHairPhrase = (hair: FacialHair): string => {
+  switch (hair) {
+    case 'any': return '';
+    case 'clean-shaven': return 'clean-shaven';
+    case 'stubble': return 'stubble';
+    case 'goatee': return 'a goatee';
+    case 'mustache': return 'a mustache';
+    case 'full beard': return 'a full beard';
+    default: return '';
+  }
+};
+export const generateText = async (apiKey: string, prompt: string, model: string, customApiConfig: CustomApiConfig): Promise<string> => {
+  // Normalize base URL similar to makeApiCall
+  let base = (customApiConfig.url ?? '').trim();
+  if (!base || base === 'local' || base === '/local') {
+    base = 'http://localhost:11434';
+  } else if (!/^https?:\/\//i.test(base)) {
+    base = `http://${base.replace(/^\//, '')}`;
+  }
+  base = base.replace(/\/$/, '');
+  const url = `${base}/v1/completions`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
+    },
+    body: JSON.stringify({
+      prompt,
+      model
+    })
+  });
+
+  if (!response.ok) {
+    const errTxt = await response.text().catch(() => '');
+    throw new Error(`Custom API request failed with status ${response.status} ${response.statusText} - ${errTxt}`);
+  }
+
+  const data = await response.json();
+  return data?.choices?.[0]?.text ?? '';
+};
+
+// Simplified imagination paragraph for Qwen-compatible custom API
+export const generateImaginationParagraph = async (
   config: CustomApiConfig,
-  prompt: string,
-  resolution: '1k' | '2k',
-  aspectRatio: string
+  nsfwSettings: NsfwSettingsState
 ): Promise<string> => {
-  // Local LLM doesn't support image generation
-  // This would require integration with a local image generation model like Stable Diffusion
-  throw new Error('Image generation not supported with local LLM. Use an external image generation service.');
+  const systemPrompt = [
+    'You are a creative writer. Your only task is to write a single paragraph.',
+    'CRITICAL RULE: Your output MUST be a PARAGRAPH with full sentences.',
+    `Content Policy: The content of the paragraph MUST match the user's SFW/NSFW/Hardcore setting: ${nsfwSettings.mode}.`
+  ].join('\n');
+
+  const userPrompt = 'Write one single, creative, descriptive paragraph in English about a character in a compelling scene.';
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt }
+  ];
+
+  const raw = await makeApiCall(config, messages, {
+    temperature: 0.7,
+    top_p: 0.9,
+    maxTokens: 280,
+    stop: ['<<EOD>>']
+  });
+  return cleanTextResponse(raw);
 };

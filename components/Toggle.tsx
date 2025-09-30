@@ -7,10 +7,11 @@ interface ToggleProps {
   onChange: (checked: boolean) => void;
   disabled?: boolean;
   tooltip?: string;
+  htmlId?: string; // optional stable id independent from label
 }
 
-export const Toggle: React.FC<ToggleProps> = ({ label, checked, onChange, disabled = false, tooltip }) => {
-  const toggleId = `toggle-${label.replace(/\s+/g, '-').toLowerCase()}`;
+export const Toggle: React.FC<ToggleProps> = ({ label, checked, onChange, disabled = false, tooltip, htmlId }) => {
+  const toggleId = htmlId || `toggle-${label.replace(/\s+/g, '-').toLowerCase()}`;
 
   return (
     <div className={`flex flex-col items-start ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>

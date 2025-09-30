@@ -1,0 +1,1 @@
+// Backup copy of App.tsx created before fixing syntax error

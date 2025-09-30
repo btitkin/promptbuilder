@@ -16,6 +16,37 @@ export const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({ isOpen, sett
   }
 
   const handleChange = (field: keyof AdvancedSettingsState, value: string) => {
+    // Deduplicate tokens in Negative Prompt and block param-like flags
+    if (field === 'negativePrompt') {
+      const tokens = value
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean)
+        .filter(t => !t.includes('--')); // prevent flags like --no, --ar
+      const seen = new Set<string>();
+      const deduped: string[] = [];
+      for (const t of tokens) {
+        const k = t.toLowerCase();
+        if (!seen.has(k)) {
+          seen.add(k);
+          deduped.push(t);
+        }
+      }
+      return onChange({ ...settings, negativePrompt: deduped.join(', ') });
+    }
+
+    // Lightweight inline sanitization for MidJourney params
+    if (field === 'seed') {
+      const numeric = value.replace(/[^0-9]/g, '').slice(0, 10);
+      return onChange({ ...settings, seed: numeric });
+    }
+    if (field === 'additionalParams') {
+      // Prevent users from inserting duplicated core flags; these are added automatically
+      const blocked = /--(ar|seed|no)\b/i;
+      if (blocked.test(value)) {
+        return onChange({ ...settings, additionalParams: value.replace(/--(ar|seed|no)\b[^\s]*/gi, '').trimStart() });
+      }
+    }
     onChange({ ...settings, [field]: value });
   };
 

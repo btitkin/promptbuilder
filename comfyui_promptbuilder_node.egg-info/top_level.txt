@@ -1,0 +1,13 @@
+components
+dist
+docs
+electron
+models
+node_modules
+portable-build
+portable-build-new
+public
+services
+src
+styles
+test-results

@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
-import { ChevronDownIcon } from './icons';
-import { CompactToggle } from './CompactToggle';
+import React, { useState, useEffect } from 'react';
 import { PresetCategory } from './PresetCategory';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
+import { RotateCcw, Shirt, Heart, Flame } from 'lucide-react';
+import { InfoTooltip } from './InfoTooltip';
 
 interface ClothingPresetsProps {
   onAppend: (text: string) => void;
@@ -10,7 +11,7 @@ interface ClothingPresetsProps {
   onSelectedPresetsChange: (presets: string[]) => void;
 }
 
-const sfwClothing = [
+export const sfwClothing = [
     'T-shirt and jeans', 'Formal business suit', 'Elegant evening gown', 'Summer dress', 'Winter coat and scarf',
     'Hoodie and sweatpants', 'School uniform', 'Nurse\'s uniform', 'Police officer uniform', 'Firefighter gear',
     'Knight\'s armor', 'Sci-fi spacesuit', 'Fantasy adventurer\'s leather armor', 'Wizard\'s robes', 'Steampunk attire',
@@ -28,12 +29,12 @@ const sfwClothing = [
     'Backpack', 'Crown', 'Tiara', 'Blouse', 'Skirt', 
     'Cardigan', 'Bomber jacket', 'Windbreaker', 'Anorak', 'Peacoat', 
     'Sneakers', 'Boots', 'Sandals', 'Dress shoes', 'Ballet flats', 
-    'Prom dress', 'Quinceañera dress', 'Cheongsam', 'Dirndl', 'Poncho', 
+    'Prom dress', 'QuinceaĂ±era dress', 'Cheongsam', 'Dirndl', 'Poncho', 
     'Lab goggles', 'Artist\'s smock', 'Gardening gloves', 'Motorcycle helmet', 'Baseball cap', 
     'Beanie', 'Sarong', 'Kaftan', 'Messenger bag', 'Fanny pack'
 ];
 
-const nsfwClothing = [
+export const nsfwClothing = [
     'Lingerie set', 'Thong', 'G-string', 'Bra and panties', 'Micro bikini',
     'See-through nightgown', 'Sheer lingerie', 'Fishnet stockings', 'Garter belt and stockings', 'Corset',
     'Latex catsuit', 'Leather bodysuit', 'Bondage harness', 'Strappy lingerie', 'Crotchless panties',
@@ -52,7 +53,7 @@ const nsfwClothing = [
     'Liquid latex', 'Schoolboy uniform (sexualized)', 'Slit dress', 'Plugging tail', 'Nipple tape'
 ];
 
-const hardcoreClothing = [
+export const hardcoreClothing = [
     'Strapon harness', 'Ball gag', 'Blindfold', 'Nipple clamps', 'Spreader bar',
     'Vibrator', 'Dildo', 'Cock ring', 'Chastity cage', 'Anal beads',
     'Handcuffs', 'Rope bondage (shibari)', 'Butt plug', 'Anal hook', 'Piercings (genital)',
@@ -64,116 +65,146 @@ const hardcoreClothing = [
 ];
 
 export const ClothingPresets: React.FC<ClothingPresetsProps> = ({ onAppend, selectedPresets, onSelectedPresetsChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'sfw' | 'nsfw' | 'hardcore' | null>(null);
-  const [isMultiSelect, setIsMultiSelect] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
-  const handleTabToggle = (tab: 'sfw' | 'nsfw' | 'hardcore') => {
-    setActiveTab(prev => prev === tab ? null : tab);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+
+
+  const handleTabToggle = (tab: string) => {
+    setActiveTab(activeTab === tab ? null : tab);
   };
   
   const handlePresetClick = (preset: string) => {
     const presetLower = preset.toLowerCase();
-    if (isMultiSelect) {
+    if (preset === '') {
+      // Clear all selections
+      onSelectedPresetsChange([]);
+    } else {
+      // Toggle selection in multi-select mode
       onSelectedPresetsChange(
         selectedPresets.includes(presetLower)
           ? selectedPresets.filter(p => p !== presetLower)
           : [...selectedPresets, presetLower]
       );
-    } else {
-      onAppend(preset); // Append original case
-      // Also update selection for the Random button. Toggle selection on single-select mode.
-      const isCurrentlySelected = selectedPresets.length === 1 && selectedPresets[0] === presetLower;
-      onSelectedPresetsChange(isCurrentlySelected ? [] : [presetLower]);
-    }
-  };
-  
-  const handleAppendSelected = () => {
-    if (selectedPresets.length > 0) {
-      onAppend(selectedPresets.join(', '));
-      onSelectedPresetsChange([]);
     }
   };
 
-  const handleClearSelection = () => {
+  const handleClearAll = () => {
     onSelectedPresetsChange([]);
   };
 
   return (
-    <div className="bg-gray-900/50 rounded-md border border-gray-700">
-       <button 
-        onClick={() => setIsOpen(prev => !prev)} 
+    <div className="bg-gray-900/50 rounded-md border border-indigo-700/50">
+      <button 
+        onClick={() => setIsCollapsed(prev => !prev)} 
         className="w-full flex justify-between items-center p-4 focus:outline-none"
-        aria-expanded={isOpen}
+        aria-expanded={!isCollapsed}
       >
-        <h3 className="text-sm font-medium text-gray-400">Clothing Presets</h3>
-        <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <div className="flex items-center gap-2">
+          <Shirt className="h-4 w-4 text-indigo-400" />
+          <h3 className="text-sm font-medium text-indigo-400">Clothing Presets</h3>
+          {selectedPresets.length > 0 && (
+            <span className="text-xs bg-indigo-600 text-indigo-100 px-2 py-0.5 rounded-full">
+              {selectedPresets.length} selected
+            </span>
+          )}
+          <InfoTooltip text="Select clothing and accessories for your character from Sfw, Nsfw, or hardcore categories" />
+        </div>
+        <ChevronDownIcon className={`h-5 w-5 text-indigo-400 transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`} />
       </button>
-
-      {isOpen && (
-         <div className="px-4 pb-4 space-y-4 animate-fade-in">
-            <div className="p-3 bg-gray-800 rounded-md border border-gray-700 space-y-3">
-              <CompactToggle
-                label="Multi-Select"
-                checked={isMultiSelect}
-                onChange={(checked) => {
-                    setIsMultiSelect(checked);
-                    // Clear selection when changing mode to avoid confusion
-                    onSelectedPresetsChange([]);
-                }}
-                tooltip="Toggle to select multiple presets at once."
-              />
-              {isMultiSelect && selectedPresets.length > 0 && (
-                <div className="flex gap-2 animate-fade-in">
-                  <button 
-                    onClick={handleAppendSelected} 
-                    className="flex-grow bg-accent text-white font-semibold py-2 px-3 text-sm rounded-md hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent transition-colors"
-                  >
-                    Append Selected ({selectedPresets.length})
-                  </button>
-                  <button 
-                    onClick={handleClearSelection} 
-                    className="text-gray-400 font-semibold py-2 px-3 text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent transition-colors"
-                  >
-                    Clear
-                  </button>
+      
+      {!isCollapsed && (
+        <div className="px-4 pb-4 space-y-4 animate-fade-in">
+          <div className="space-y-3">
+            {/* SFW */}
+            <div className="pt-4 border-t border-indigo-700/30">
+              <button
+                onClick={() => handleTabToggle('sfw')}
+                className="flex items-center justify-between w-full text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <Shirt className="h-3 w-3 text-green-400" />
+                  <span className="text-xs font-medium text-green-400">SFW</span>
+                </div>
+                <ChevronDownIcon className={`h-4 w-4 text-green-400 transition-transform duration-200 ${activeTab === 'sfw' ? 'rotate-180' : ''}`} />
+              </button>
+              {activeTab === 'sfw' && (
+                <div className="mt-2">
+                  <PresetCategory
+                    title="SFW"
+                    presets={sfwClothing}
+                    isOpen={true}
+                    onToggle={() => {}}
+                    onPresetClick={handlePresetClick}
+                    isMultiSelect={true}
+                    selectedPresets={selectedPresets}
+                    colorClass="text-green-400"
+                  />
                 </div>
               )}
             </div>
-            <div className="bg-gray-800 rounded-md border border-gray-700">
-              <PresetCategory 
-                title="SFW"
-                presets={sfwClothing}
-                isOpen={activeTab === 'sfw'}
-                onToggle={() => handleTabToggle('sfw')}
-                onPresetClick={handlePresetClick}
-                isMultiSelect={isMultiSelect}
-                selectedPresets={selectedPresets}
-                colorClass="text-green-400"
-              />
-              <PresetCategory 
-                title="NSFW"
-                presets={nsfwClothing}
-                isOpen={activeTab === 'nsfw'}
-                onToggle={() => handleTabToggle('nsfw')}
-                onPresetClick={handlePresetClick}
-                isMultiSelect={isMultiSelect}
-                selectedPresets={selectedPresets}
-                colorClass="text-yellow-400"
-              />
-              <PresetCategory 
-                title="Hardcore"
-                presets={hardcoreClothing}
-                isOpen={activeTab === 'hardcore'}
-                onToggle={() => handleTabToggle('hardcore')}
-                onPresetClick={handlePresetClick}
-                isMultiSelect={isMultiSelect}
-                selectedPresets={selectedPresets}
-                colorClass="text-red-400"
-              />
+
+            {/* NSFW */}
+            <div className="pt-4 border-t border-indigo-700/30">
+              <button
+                onClick={() => handleTabToggle('nsfw')}
+                className="flex items-center justify-between w-full text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <Heart className="h-3 w-3 text-yellow-400" />
+                  <span className="text-xs font-medium text-yellow-400">NSFW</span>
+                </div>
+                <ChevronDownIcon className={`h-4 w-4 text-yellow-400 transition-transform duration-200 ${activeTab === 'nsfw' ? 'rotate-180' : ''}`} />
+              </button>
+              {activeTab === 'nsfw' && (
+                <div className="mt-2">
+                  <PresetCategory
+                    title="NSFW"
+                    presets={nsfwClothing}
+                    isOpen={true}
+                    onToggle={() => {}}
+                    onPresetClick={handlePresetClick}
+                    isMultiSelect={true}
+                    selectedPresets={selectedPresets}
+                    colorClass="text-yellow-400"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Hardcore */}
+            <div className="pt-4 border-t border-indigo-700/30">
+              <button
+                onClick={() => handleTabToggle('hardcore')}
+                className="flex items-center justify-between w-full text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <Flame className="h-3 w-3 text-red-400" />
+                  <span className="text-xs font-medium text-red-400">Hardcore</span>
+                </div>
+                <ChevronDownIcon className={`h-4 w-4 text-red-400 transition-transform duration-200 ${activeTab === 'hardcore' ? 'rotate-180' : ''}`} />
+              </button>
+              {activeTab === 'hardcore' && (
+                <div className="mt-2">
+                  <PresetCategory
+                    title="Hardcore"
+                    presets={hardcoreClothing}
+                    isOpen={true}
+                    onToggle={() => {}}
+                    onPresetClick={handlePresetClick}
+                    isMultiSelect={true}
+                    selectedPresets={selectedPresets}
+                    colorClass="text-red-400"
+                  />
+                </div>
+              )}
             </div>
           </div>
+        </div>
       )}
     </div>
   );
 };
+
+

@@ -13,6 +13,11 @@ export const History: React.FC<HistoryProps> = ({ history, onSelect, onClear }) 
     return null;
   }
 
+  const handleClearClick = React.useCallback(() => {
+    if (window.confirm('Clear all history? This action cannot be undone.')) {
+      onClear();
+    }
+  }, [onClear]);
   return (
     <div className="mt-6">
       <div className="flex justify-between items-center mb-2">
@@ -21,7 +26,7 @@ export const History: React.FC<HistoryProps> = ({ history, onSelect, onClear }) 
         </h3>
         {history.length > 0 && (
           <button
-            onClick={onClear}
+            onClick={handleClearClick}
             className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500 rounded-md px-2 py-1"
             aria-label="Clear history"
           >

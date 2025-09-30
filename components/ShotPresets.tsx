@@ -1,8 +1,10 @@
 
-import React, { useState } from 'react';
-import { ChevronDownIcon } from './icons';
-import { CompactToggle } from './CompactToggle';
+import React, { useState, useEffect } from 'react';
 import { PresetCategory } from './PresetCategory';
+import { CompactToggle } from './CompactToggle';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
+import { RotateCcw, Lightbulb, Camera, Cloud } from 'lucide-react';
+import { InfoTooltip } from './InfoTooltip';
 
 interface ShotPresetsProps {
   onAppend: (text: string) => void;
@@ -38,9 +40,11 @@ const atmospherePresets = [
 ];
 
 export const ShotPresets: React.FC<ShotPresetsProps> = ({ onAppend, selectedPresets, onSelectedPresetsChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isClient, setIsClient] = useState(false);
+
   const [activeTab, setActiveTab] = useState<'lighting' | 'camera' | 'atmosphere' | null>(null);
-  const [isMultiSelect, setIsMultiSelect] = useState(false);
+
 
   const handleTabToggle = (tab: 'lighting' | 'camera' | 'atmosphere') => {
     setActiveTab(prev => prev === tab ? null : tab);
@@ -48,108 +52,101 @@ export const ShotPresets: React.FC<ShotPresetsProps> = ({ onAppend, selectedPres
   
   const handlePresetClick = (preset: string) => {
     const presetLower = preset.toLowerCase();
-    if (isMultiSelect) {
+    if (preset === '') {
+      // Clear all selections
+      onSelectedPresetsChange([]);
+    } else {
+      // Toggle selection in multi-select mode
       onSelectedPresetsChange(
         selectedPresets.includes(presetLower)
           ? selectedPresets.filter(p => p !== presetLower)
           : [...selectedPresets, presetLower]
       );
-    } else {
-      onAppend(preset); // Append original case
-      // Also update selection for the Random button. Toggle selection on single-select mode.
-      const isCurrentlySelected = selectedPresets.length === 1 && selectedPresets[0] === presetLower;
-      onSelectedPresetsChange(isCurrentlySelected ? [] : [presetLower]);
     }
   };
-  
-  const handleAppendSelected = () => {
-    if (selectedPresets.length > 0) {
-      onAppend(selectedPresets.join(', '));
-      onSelectedPresetsChange([]);
-    }
-  };
-
-  const handleClearSelection = () => {
-    onSelectedPresetsChange([]);
-  };
-
 
   return (
-    <div className="bg-gray-900/50 rounded-md border border-gray-700">
+    <div className="bg-gray-900/50 rounded-md border border-slate-700/50">
        <button 
-        onClick={() => setIsOpen(prev => !prev)} 
+        onClick={() => setIsCollapsed(prev => !prev)} 
         className="w-full flex justify-between items-center p-4 focus:outline-none"
-        aria-expanded={isOpen}
+        aria-expanded={!isCollapsed}
       >
-        <h3 className="text-sm font-medium text-gray-400">Shot Presets</h3>
-        <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <div className="flex items-center gap-2">
+          <Camera className="h-4 w-4 text-slate-400" />
+          <h3 className="text-sm font-medium text-slate-400">Shot Presets <span className="text-xs text-gray-400">(Opt-in)</span></h3>
+          {selectedPresets.length > 0 && (
+            <span className="text-xs bg-slate-600 text-slate-200 px-2 py-0.5 rounded-full">
+              {selectedPresets.length} selected
+            </span>
+          )}
+          <InfoTooltip text="Control lighting, camera angles, and atmosphere to set the mood and visual style of your image." />
+        </div>
+        <ChevronDownIcon className={`h-5 w-5 text-slate-400 transition-transform duration-200 ${!isCollapsed ? 'rotate-180' : ''}`} />
       </button>
 
-      {isOpen && (
+      {!isCollapsed && (
          <div className="px-4 pb-4 space-y-4 animate-fade-in">
-            <div className="p-3 bg-gray-800 rounded-md border border-gray-700 space-y-3">
-              <CompactToggle
-                label="Multi-Select"
-                checked={isMultiSelect}
-                onChange={(checked) => {
-                    setIsMultiSelect(checked);
-                    // Clear selection when changing mode to avoid confusion
-                    onSelectedPresetsChange([]);
-                }}
-                tooltip="Toggle to select multiple presets at once."
-              />
-              {isMultiSelect && selectedPresets.length > 0 && (
-                <div className="flex gap-2 animate-fade-in">
-                  <button 
-                    onClick={handleAppendSelected} 
-                    className="flex-grow bg-accent text-white font-semibold py-2 px-3 text-sm rounded-md hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent transition-colors"
-                  >
-                    Append Selected ({selectedPresets.length})
-                  </button>
-                  <button 
-                    onClick={handleClearSelection} 
-                    className="text-gray-400 font-semibold py-2 px-3 text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent transition-colors"
-                  >
-                    Clear
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-gray-800 rounded-md border border-gray-700">
-              <PresetCategory 
-                title="Lighting"
-                presets={lightingPresets}
-                isOpen={activeTab === 'lighting'}
-                onToggle={() => handleTabToggle('lighting')}
-                onPresetClick={handlePresetClick}
-                isMultiSelect={isMultiSelect}
-                selectedPresets={selectedPresets}
-                colorClass="text-yellow-400"
-              />
-              <PresetCategory 
-                title="Camera"
-                presets={cameraPresets}
-                isOpen={activeTab === 'camera'}
-                onToggle={() => handleTabToggle('camera')}
-                onPresetClick={handlePresetClick}
-                isMultiSelect={isMultiSelect}
-                selectedPresets={selectedPresets}
-                colorClass="text-blue-400"
-              />
-              <PresetCategory 
-                title="Atmosphere"
-                presets={atmospherePresets}
-                isOpen={activeTab === 'atmosphere'}
-                onToggle={() => handleTabToggle('atmosphere')}
-                onPresetClick={handlePresetClick}
-                isMultiSelect={isMultiSelect}
-                selectedPresets={selectedPresets}
-                colorClass="text-purple-400"
-              />
+            <div className="space-y-0">
+              <div className="border-t border-slate-700/30">
+                <PresetCategory 
+                  title={
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="h-3 w-3 text-yellow-400" />
+                      <span>Lighting</span>
+                      <InfoTooltip text="Control the lighting conditions and mood of your scene, from natural sunlight to dramatic cinematic effects." />
+                    </div>
+                  }
+                  presets={lightingPresets}
+                  isOpen={activeTab === 'lighting'}
+                  onToggle={() => handleTabToggle('lighting')}
+                  onPresetClick={handlePresetClick}
+                  isMultiSelect={true}
+                  selectedPresets={selectedPresets}
+                  colorClass="text-yellow-400"
+                />
+              </div>
+              <div className="border-t border-slate-700/30">
+                <PresetCategory 
+                  title={
+                    <div className="flex items-center gap-2">
+                      <Camera className="h-3 w-3 text-blue-400" />
+                      <span>Camera</span>
+                      <InfoTooltip text="Set camera angles, shot types, and composition techniques to frame your subject perfectly." />
+                    </div>
+                  }
+                  presets={cameraPresets}
+                  isOpen={activeTab === 'camera'}
+                  onToggle={() => handleTabToggle('camera')}
+                  onPresetClick={handlePresetClick}
+                  isMultiSelect={true}
+                  selectedPresets={selectedPresets}
+                  colorClass="text-blue-400"
+                />
+              </div>
+              <div className="border-t border-slate-700/30">
+                <PresetCategory 
+                  title={
+                    <div className="flex items-center gap-2">
+                      <Cloud className="h-3 w-3 text-purple-400" />
+                      <span>Atmosphere</span>
+                      <InfoTooltip text="Define the emotional tone and atmosphere of your image, from peaceful and serene to dark and mysterious." />
+                    </div>
+                  }
+                  presets={atmospherePresets}
+                  isOpen={activeTab === 'atmosphere'}
+                  onToggle={() => handleTabToggle('atmosphere')}
+                  onPresetClick={handlePresetClick}
+                  isMultiSelect={true}
+                  selectedPresets={selectedPresets}
+                  colorClass="text-purple-400"
+                />
+              </div>
             </div>
           </div>
       )}
     </div>
   );
 };
+
+

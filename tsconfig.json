@@ -25,5 +25,9 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "portable-build",
+    "portable-build-new"
+  ]
 }

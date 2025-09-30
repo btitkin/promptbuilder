@@ -35,7 +35,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({ onExport, onIm
       >
         <div className="flex items-center gap-2">
             <h3 className="text-sm font-medium text-gray-400">Manage Settings</h3>
-            <InfoTooltip text="Export all your current settings (except API keys) to a JSON file to save or share. You can import a settings file to load a configuration." />
+            <InfoTooltip text="Export all your current settings (except Api keys) to a Json file to save or share. You can import a settings file to load a configuration." />
         </div>
         <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>

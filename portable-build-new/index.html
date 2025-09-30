@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data: https://aistudiocdn.com https://cdn.tailwindcss.com; script-src 'self' 'unsafe-inline' https://aistudiocdn.com https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: blob:; font-src 'self' data:; connect-src *; frame-ancestors 'none';" />
+    <title>Prompt Builder</title>
+    <script>
+      (function() {
+        try {
+          const saved = localStorage.getItem('theme') || 'dark';
+          document.documentElement.setAttribute('data-theme', saved);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'gray-900': '#121212',
+              'gray-800': '#1E1E1E',
+              'gray-700': '#2C2C2C',
+              'gray-600': '#3E3E3E',
+              'gray-400': '#A0A0A0',
+              'gray-200': '#E0E0E0',
+              'accent': '#6366F1',
+              'accent-hover': '#4F46E5',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      html {
+        zoom: 1.3;
+      }
+      @keyframes fade-in {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fade-in 0.3s ease-out forwards;
+      }
+      @keyframes logo-fade-in-scale {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      .animate-logo-fade-in-scale { animation: logo-fade-in-scale 0.8s ease-out forwards; }
+      @keyframes overlay-fade-out {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+      .animate-overlay-fade-out { animation: overlay-fade-out 0.5s ease-in forwards; }
+      @keyframes blink {
+        from, to { opacity: 1; }
+        50% { opacity: 0; }
+      }
+      .animate-blink { animation: blink 1s step-end infinite; }
+    </style>
+
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.17.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="./assets/index-DeqN_obe.js"></script>
+</head>
+  <body class="bg-gray-900 text-gray-200 antialiased">
+    <div id="root"></div>
+
+  </body>
+</html>

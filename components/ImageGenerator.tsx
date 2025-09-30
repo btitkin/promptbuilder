@@ -36,7 +36,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
                 <div className="w-full flex justify-between items-center p-4 cursor-not-allowed">
                     <div className="flex items-center gap-2">
                         <h3 className="text-sm font-medium text-gray-500">Image Generation</h3>
-                        <InfoTooltip text="This feature is only available when using the Google Gemini or OpenAI API." />
+                        <InfoTooltip text="This feature is only available when using the Google Gemini or OpenAi Api." />
                     </div>
                     <ChevronDownIcon className="h-5 w-5 text-gray-400" />
                 </div>

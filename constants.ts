@@ -69,7 +69,8 @@ export const MODELS: Record<string, ModelConfig> = {
   // Modern Natural Language Models
   'Google Imagen4': { ...MODERN_NATURAL_LANGUAGE_CONFIG, name: 'Google Imagen4', supportsBreak: false },
   'Flux': { ...MODERN_NATURAL_LANGUAGE_CONFIG, name: 'Flux', supportsBreak: false },
-  'Nano Banana': { ...MODERN_NATURAL_LANGUAGE_CONFIG, name: 'Nano Banana', supportsBreak: false },
+  // Moved to tagged syntax per product unification
+  'Nano Banana': { ...SD_LIKE_CONFIG, name: 'Nano Banana', supportsBreak: false },
   'OpenAI': { ...MODERN_NATURAL_LANGUAGE_CONFIG, name: 'OpenAI', supportsBreak: false }, // DALL-E series
   'Qwen': { ...MODERN_NATURAL_LANGUAGE_CONFIG, name: 'Qwen', supportsBreak: false },
   
@@ -116,3 +117,38 @@ const POPULARITY_ORDER = [
 
 // Ensure the exported list of names is sorted by popularity and only contains models that exist.
 export const MODEL_NAMES = POPULARITY_ORDER.filter(name => name in MODELS);
+
+// Style Presets Arrays
+export const realisticStyles = [
+  'Film Photography', 'Portrait Studio', 'Street Photography', 'Fashion Editorial', 
+  'Documentary', 'Candid', 'Professional Headshot', 'Environmental Portrait',
+  'Black and White', 'Color Grading', 'Natural Light', 'Studio Lighting',
+  'Golden Hour', 'Blue Hour', 'High Key', 'Low Key', 'Dramatic Lighting',
+  'Soft Focus', 'Sharp Focus', 'Bokeh', 'Depth of Field', 'Wide Angle',
+  'Telephoto', 'Macro', 'Vintage', 'Modern', 'Minimalist', 'Cinematic',
+  'Webcam', 'Spycam', 'CCTV', 'Smartphone', 'Polaroid', 'Analog', 'Editorial',
+  'Realistic', 'Amateur', 'Retro'
+];
+
+export const animeStyles = [
+  'Studio Ghibli', 'Naruto', 'Bleach', 'One Piece', 'Attack on Titan',
+  'Demon Slayer', 'Your Name', 'Spirited Away', 'Princess Mononoke',
+  'Akira', 'Ghost in the Shell', 'Cowboy Bebop', 'Evangelion',
+  'Sailor Moon', 'Dragon Ball', 'Pokemon', 'JoJo\'s Bizarre Adventure',
+  'Death Note', 'Fullmetal Alchemist', 'My Hero Academia', '90s VHS Anime',
+  'Chibi', 'Ecchi Manga', 'Dark Fantasy Anime', 'Cyberpunk Edgerunners',
+  'Cell Shading', 'Watercolor Anime', 'Sketch Style', 'Manga Panel'
+];
+
+export const artisticStyles = [
+  'Oil Painting', 'Watercolor', 'Acrylic', 'Digital Art', 'Concept Art',
+  'Illustration', 'Sketch', 'Charcoal Drawing', 'Pencil Drawing',
+  'Ink Drawing', 'Pastel', 'Mixed Media', 'Abstract', 'Impressionist',
+  'Expressionist', 'Surreal', 'Pop Art', 'Art Nouveau', 'Art Deco',
+  'Renaissance', 'Baroque', 'Gothic', 'Minimalist Art', 'Contemporary',
+  'Fantasy Art', 'Sci-Fi Art', 'Comic Book Style', 'Pin-up Art'
+];
+
+// Default negative prompt used when the user has not saved a custom value
+export const DEFAULT_NEGATIVE_PROMPT =
+  'low quality, worst quality, jpeg artifacts, noisy, blurry, ugly, disgusting, deformed, distorted, disfigured, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, disconnected limbs, amputation, malformed hands, mutated hands, extra fingers, missing fingers, poorly drawn hands, poorly drawn face, mutated face, watermark, signature, username, artist name';

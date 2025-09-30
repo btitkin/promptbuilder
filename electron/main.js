@@ -30,6 +30,139 @@ function unifyStop(stop) {
   return ['<<EOD>>'];
 }
 
+// ========================= Advanced JSON Parsing Functions =========================
+function parseLlamaJsonResponse(text) {
+  if (!text || typeof text !== 'string') return null;
+  
+  const cleanedText = text.trim();
+  
+  // Strategy 1: Try direct JSON parsing
+  try {
+    const parsed = JSON.parse(cleanedText);
+    if (parsed && typeof parsed === 'object') {
+      return parsed;
+    }
+  } catch (e) {
+    // Continue to other strategies
+  }
+  
+  // Strategy 2: Extract JSON from code blocks or markdown
+  const jsonBlockMatch = cleanedText.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonBlockMatch) {
+    try {
+      const parsed = JSON.parse(jsonBlockMatch[1].trim());
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    } catch (e) {
+      // Continue to other strategies
+    }
+  }
+  
+  // Strategy 3: Find the first valid JSON object in the text
+  const jsonObjectMatch = cleanedText.match(/\{[\s\S]*?\}(?=\s*$|\s*[^\s\w\d\{\}\[\]"',])/);
+  if (jsonObjectMatch) {
+    try {
+      // Clean common JSON formatting issues
+      let jsonStr = jsonObjectMatch[0]
+        .replace(/,\s*\}/g, '}')
+        .replace(/,\s*\]/g, ']')
+        .replace(/'/g, '"')
+        .replace(/\n/g, ' ')
+        .replace(/\s+/g, ' ');
+      
+      const parsed = JSON.parse(jsonStr);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    } catch (e) {
+      // Continue to other strategies
+    }
+  }
+  
+  // Strategy 4: Try to parse as array of objects
+  const jsonArrayMatch = cleanedText.match(/\[[\s\S]*?\]/);
+  if (jsonArrayMatch) {
+    try {
+      const parsed = JSON.parse(jsonArrayMatch[0]);
+      if (Array.isArray(parsed)) {
+        return { structuredPrompts: parsed };
+      }
+    } catch (e) {
+      // Continue to other strategies
+    }
+  }
+  
+  // Strategy 5: Try to find and fix common JSON syntax errors
+  const potentialJsonMatch = cleanedText.match(/\{[\s\S]{20,1000}\}/);
+  if (potentialJsonMatch) {
+    try {
+      let fixedJson = potentialJsonMatch[0]
+        // Fix missing quotes around keys
+        .replace(/([\{\,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+        // Fix single quotes
+        .replace(/'/g, '"')
+        // Fix trailing commas
+        .replace(/,\s*\}/g, '}')
+        .replace(/,\s*\]/g, ']');
+      
+      const parsed = JSON.parse(fixedJson);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    } catch (e) {
+      // Final fallback
+    }
+  }
+  
+  return null;
+}
+
+// ========================= Prompt Builders for Different Tasks =========================
+function buildPromptForTask(task, payload) {
+  switch (task) {
+    case 'generatePromptVariations': {
+      const description = payload?.prompt || '';
+      return `As an expert prompt engineer, transform the following description into ${payload?.numVariations || 1} optimized prompt variation(s) for ${payload?.selectedModel || 'SDXL'}.
+"""
+${description}
+"""
+
+Strict output requirements:
+- Return a JSON object with exactly two keys: "structuredPrompts" and "negativePrompt".
+- "structuredPrompts" MUST be an array with exactly ${payload?.numVariations || 1} item(s).
+- Each item MUST be an object with ONLY these keys: "subject", "attributes", "clothing", "pose", "action", "location", "background", "style".
+- The value of every key MUST be an array of strings.
+- Use concise, model-appropriate phrases. Do NOT include generation parameters (aspect ratio, seed) or negative concepts inside these arrays.
+
+Content mode: ${payload?.nsfwSettings?.mode || 'off'}
+Style filter: ${payload?.styleFilter?.main || 'realistic'}${payload?.styleFilter?.sub && payload?.styleFilter?.sub !== 'any' ? '/' + payload?.styleFilter?.sub : ''}
+Character settings: ${JSON.stringify(payload?.characterSettings || {})}
+
+Return only the JSON object, no additional text.`;
+    }
+    case 'enhanceDescription':
+      return `You are a prompt expansion expert. Your task is to take a list of basic keywords and enrich them with more specific and descriptive details, while maintaining the original \`key: value\` structure as much as possible.
+Instructions:
+Analyze the input keywords below.
+For each keyword or key-value pair, add more specific, creative details.
+Output the new, enriched list of keywords.
+
+Example:
+INPUT: clothing: suit, location: city, hair_color: red
+CORRECT OUTPUT: clothing: tailored black pinstripe business suit with a crisp white shirt, location: rain-slicked neon-lit cyberpunk city street at night, hair_color: vibrant crimson red
+
+Input Keywords to Enhance:
+${payload?.prompt || ''}`;
+    case 'generateRandomDescription':
+      return `You are a creative author. Your task is to write a single, descriptive PARAGRAPH about a compelling character in a scene.
+Crucial Rule: Your output MUST be a narrative paragraph with full sentences. It MUST NOT be a comma-separated list of keywords or tags.
+Content Policy: The tone of the paragraph must match the user's SFW/NSFW/Hardcore setting: ${payload?.nsfwSettings?.mode || 'SFW'}.`;
+    default:
+      return String(payload?.prompt || '').trim();
+  }
+}
+
 // w konstrukcji modelu
 const ctxSize = DEFAULT_CONTEXT_SIZE;
 const maxNewTokens = DEFAULT_MAX_NEW_TOKENS;
@@ -54,7 +187,7 @@ function createWindow() {
 
   // Load the app
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5174');
+    mainWindow.loadURL('http://localhost:5173');
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
   } else {
@@ -76,7 +209,7 @@ function createWindow() {
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
     const parsedUrl = new URL(navigationUrl);
     
-    if (parsedUrl.origin !== 'http://localhost:5174' && !navigationUrl.startsWith('file://')) {
+    if (parsedUrl.origin !== 'http://localhost:5173' && !navigationUrl.startsWith('file://')) {
       event.preventDefault();
       shell.openExternal(navigationUrl);
     }
@@ -85,10 +218,11 @@ function createWindow() {
 
 // LLM IPC handler
 ipcMain.handle('llm-request', async (_event, args) => {
-  const { provider, payload } = args || {};
-  if (provider !== 'custom') throw new Error('Unsupported provider');
+  // Support both legacy shape ({provider, payload}) and new shape ({task, payload})
+  const task = args?.task || 'custom';
+  const payload = args?.payload || {};
 
-  const prompt = payload?.prompt || '';
+  const prompt = buildPromptForTask(task, payload);
   const temperature = payload?.temperature ?? 0.7;
   const top_p = payload?.top_p ?? 0.9;
   const maxTokens = payload?.maxTokens ?? maxNewTokens;
@@ -125,9 +259,33 @@ ipcMain.handle('llm-request', async (_event, args) => {
   }
 
   // Trim only at the first occurrence of any stop sequence; if none found, keep full text
-  text = trimAtStopSequences(text, stops);
+  const finalText = trimAtStopSequences(text, stops);
 
-  return text;
+  // Return unified schema for structured tasks
+  try {
+    switch (task) {
+      case 'generatePromptVariations': {
+        const parsed = parseLlamaJsonResponse(finalText);
+        if (parsed) {
+          return {
+            structuredPrompts: Array.isArray(parsed.structuredPrompts) ? parsed.structuredPrompts : [parsed],
+            negativePrompt: parsed.negativePrompt || 'blurry, ugly, bad anatomy, watermark, signature'
+          };
+        }
+        return {
+          structuredPrompts: [{ subject: [], attributes: [], clothing: [], pose: [], action: [], location: [], background: [], style: [] }],
+          negativePrompt: 'blurry, ugly, bad anatomy, watermark, signature'
+        };
+      }
+      case 'enhanceDescription':
+      case 'generateRandomDescription':
+      default:
+        return { result: finalText };
+    }
+  } catch (e) {
+    console.warn('Failed to parse or format LLM response:', e);
+    return { result: finalText };
+  }
 });
 
 // Initialize Llama model
@@ -137,7 +295,7 @@ async function initializeLlama() {
     llama = await getLlama();
     
     // Load a model - you can change this to your preferred model path
-    const modelPath = process.env.LLAMA_MODEL_PATH || './models/gemma-3-12b-it-abliterated.q4_k_m.gguf';
+    const modelPath = process.env.LLAMA_MODEL_PATH || './models/Qwen2.5-7B-Instruct-Q4_K_M.gguf';
     model = await llama.loadModel({
       modelPath: modelPath,
       gpuLayers: 'max' // Pełne wykorzystanie GPU dla modelu 12B

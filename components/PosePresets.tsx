@@ -1,8 +1,10 @@
 
-import React, { useState } from 'react';
-import { ChevronDownIcon } from './icons';
-import { CompactToggle } from './CompactToggle';
+import React, { useState, useEffect } from 'react';
 import { PresetCategory } from './PresetCategory';
+import { CompactToggle } from './CompactToggle';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
+import { RotateCcw, User, Shield, Eye, Flame, Move } from 'lucide-react';
+import { InfoTooltip } from './InfoTooltip';
 
 interface PosePresetsProps {
   onAppend: (text: string) => void;
@@ -10,7 +12,7 @@ interface PosePresetsProps {
   onSelectedPresetsChange: (presets: string[]) => void;
 }
 
-const casualSfwPoses = [
+export const casualSfwPoses = [
     'Standing confidently', 'Sitting gracefully', 'Walking briskly', 'Running dynamically', 'Jumping for joy', 
     'Lying relaxed on grass', 'Leaning against a wall', 'Arms crossed', 'Hands in pockets', 'Waving hello', 
     'Pointing towards something', 'Thinking pose (hand on chin)', 'Reading a book intently', 'Sipping a drink', 
@@ -19,7 +21,7 @@ const casualSfwPoses = [
     'Crouching low', 'Reaching for the sky', 'Holding a flower', 'Looking directly at camera', 'Shy pose', 'Fighting stance'
 ];
 
-const heroSfwPoses = [
+export const heroSfwPoses = [
     'Power stance, looking directly into the lens',
     'Mid-stride with purpose towards the camera',
     'Leaning forward on a table, intense gaze',
@@ -52,7 +54,7 @@ const heroSfwPoses = [
     'Flipping a coin, eyes following its arc'
 ];
 
-const nsfwPoses = [
+export const nsfwPoses = [
     'Arching back seductively', 'Spreading legs invitingly', 'On all fours', 'Bending over', 'Presenting rear', 
     'Hands behind back', 'Self-embrace', 'Lying on bed', 'Classic pin-up pose', 'Suggestive glance over shoulder', 
     'Licking lips', 'Biting lower lip', 'Pulling up shirt', 'Partially undressed', 'Showering pose', 
@@ -62,7 +64,7 @@ const nsfwPoses = [
     'Masturbating', 'Fingering'
 ];
 
-const hardcorePoses = [
+export const hardcorePoses = [
     'Missionary position', 'Cowgirl', 'Reverse cowgirl', 'Doggy style', 'Standing carry', 'Piledriver position', 
     '69 position', 'Receiving anal', 'Giving anal', 'Double penetration', 'Being spanked', 'Shibari rope bondage', 
     'Ball gag in mouth', 'Blindfolded', 'Fisting', 'Bukkake scene', 'Gangbang scene', 'Cunnilingus', 'Fellatio', 
@@ -71,9 +73,13 @@ const hardcorePoses = [
 ];
 
 export const PosePresets: React.FC<PosePresetsProps> = ({ onAppend, selectedPresets, onSelectedPresetsChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [activeTab, setActiveTab] = useState<'sfw' | 'hero-sfw' | 'nsfw' | 'hardcore' | null>(null);
-  const [isMultiSelect, setIsMultiSelect] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleTabToggle = (tab: 'sfw' | 'hero-sfw' | 'nsfw' | 'hardcore') => {
     setActiveTab(prev => prev === tab ? null : tab);
@@ -81,113 +87,117 @@ export const PosePresets: React.FC<PosePresetsProps> = ({ onAppend, selectedPres
   
   const handlePresetClick = (preset: string) => {
     const presetLower = preset.toLowerCase();
-    if (isMultiSelect) {
+    if (preset === '') {
+      // Clear all selections
+      onSelectedPresetsChange([]);
+    } else {
+      // Toggle selection in multi-select mode
       onSelectedPresetsChange(
         selectedPresets.includes(presetLower)
           ? selectedPresets.filter(p => p !== presetLower)
           : [...selectedPresets, presetLower]
       );
-    } else {
-      onAppend(preset); // Append original case
-      // Also update selection for the Random button. Toggle selection on single-select mode.
-      const isCurrentlySelected = selectedPresets.length === 1 && selectedPresets[0] === presetLower;
-      onSelectedPresetsChange(isCurrentlySelected ? [] : [presetLower]);
     }
-  };
-  
-  const handleAppendSelected = () => {
-    if (selectedPresets.length > 0) {
-      onAppend(selectedPresets.join(', '));
-      onSelectedPresetsChange([]);
-    }
-  };
-
-  const handleClearSelection = () => {
-    onSelectedPresetsChange([]);
   };
 
   return (
-    <div className="bg-gray-900/50 rounded-md border border-gray-700">
-       <button 
-        onClick={() => setIsOpen(prev => !prev)} 
-        className="w-full flex justify-between items-center p-4 focus:outline-none"
-        aria-expanded={isOpen}
+    <div className="bg-gray-900/50 rounded-md border border-emerald-700/50">
+      <div 
+        onClick={() => setIsCollapsed(prev => !prev)} 
+        className="w-full flex justify-between items-center p-4 focus:outline-none cursor-pointer"
+        aria-expanded={!isCollapsed}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setIsCollapsed(prev => !prev)}
       >
-        <h3 className="text-sm font-medium text-gray-400">Pose Presets</h3>
-        <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
+        <div className="flex items-center gap-2">
+          <Move className="h-4 w-4 text-emerald-400" />
+          <h3 className="text-sm font-medium text-emerald-400">Pose Presets <span className="text-xs text-gray-400">(Opt-in)</span></h3>
+          {selectedPresets.length > 0 && (
+            <span className="text-xs bg-emerald-600 text-emerald-100 px-2 py-0.5 rounded-full">
+              {selectedPresets.length} selected
+            </span>
+          )}
+          <InfoTooltip text="Choose from various pose categories to define character positioning and body language in your image." />
+        </div>
+        <ChevronDownIcon className={`h-5 w-5 text-emerald-400 transition-transform duration-200 ${!isCollapsed ? 'rotate-180' : ''}`} />
+      </div>
 
-      {isOpen && (
+      {!isCollapsed && (
          <div className="px-4 pb-4 space-y-4 animate-fade-in">
-            <div className="p-3 bg-gray-800 rounded-md border border-gray-700 space-y-3">
-              <CompactToggle
-                label="Multi-Select"
-                checked={isMultiSelect}
-                onChange={(checked) => {
-                    setIsMultiSelect(checked);
-                    // Clear selection when changing mode to avoid confusion
-                    onSelectedPresetsChange([]);
-                }}
-                tooltip="Toggle to select multiple presets at once."
-              />
-              {isMultiSelect && selectedPresets.length > 0 && (
-                <div className="flex gap-2 animate-fade-in">
-                  <button 
-                    onClick={handleAppendSelected} 
-                    className="flex-grow bg-accent text-white font-semibold py-2 px-3 text-sm rounded-md hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent transition-colors"
-                  >
-                    Append Selected ({selectedPresets.length})
-                  </button>
-                  <button 
-                    onClick={handleClearSelection} 
-                    className="text-gray-400 font-semibold py-2 px-3 text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent transition-colors"
-                  >
-                    Clear
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="bg-gray-800 rounded-md border border-gray-700">
-              <PresetCategory 
-                title="Casual SFW"
-                presets={casualSfwPoses}
-                isOpen={activeTab === 'sfw'}
-                onToggle={() => handleTabToggle('sfw')}
-                onPresetClick={handlePresetClick}
-                isMultiSelect={isMultiSelect}
-                selectedPresets={selectedPresets}
-                colorClass="text-green-400"
-              />
-              <PresetCategory 
-                title="Hero SFW"
-                presets={heroSfwPoses}
-                isOpen={activeTab === 'hero-sfw'}
-                onToggle={() => handleTabToggle('hero-sfw')}
-                onPresetClick={handlePresetClick}
-                isMultiSelect={isMultiSelect}
-                selectedPresets={selectedPresets}
-                colorClass="text-cyan-400"
-              />
-              <PresetCategory 
-                title="NSFW"
-                presets={nsfwPoses}
-                isOpen={activeTab === 'nsfw'}
-                onToggle={() => handleTabToggle('nsfw')}
-                onPresetClick={handlePresetClick}
-                isMultiSelect={isMultiSelect}
-                selectedPresets={selectedPresets}
-                colorClass="text-yellow-400"
-              />
-              <PresetCategory 
-                title="Hardcore"
-                presets={hardcorePoses}
-                isOpen={activeTab === 'hardcore'}
-                onToggle={() => handleTabToggle('hardcore')}
-                onPresetClick={handlePresetClick}
-                isMultiSelect={isMultiSelect}
-                selectedPresets={selectedPresets}
-                colorClass="text-red-400"
-              />
+            <div className="space-y-0">
+              <div className="border-t border-emerald-700/30">
+                <PresetCategory 
+                  title={
+                    <div className="flex items-center gap-2">
+                      <User className="h-3 w-3 text-green-400" />
+                      <span>Casual SFW</span>
+                      <InfoTooltip text="Safe-for-work poses suitable for everyday situations, casual photography, and general character positioning." />
+                    </div>
+                  }
+                  presets={casualSfwPoses}
+                  isOpen={activeTab === 'sfw'}
+                  onToggle={() => handleTabToggle('sfw')}
+                  onPresetClick={handlePresetClick}
+                  isMultiSelect={true}
+                  selectedPresets={selectedPresets}
+                  colorClass="text-green-400"
+                />
+              </div>
+              <div className="border-t border-emerald-700/30">
+                <PresetCategory 
+                  title={
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-3 w-3 text-cyan-400" />
+                      <span>Hero SFW</span>
+                      <InfoTooltip text="Dynamic, confident poses perfect for heroic characters, professional photography, and dramatic scenes." />
+                    </div>
+                  }
+                  presets={heroSfwPoses}
+                  isOpen={activeTab === 'hero-sfw'}
+                  onToggle={() => handleTabToggle('hero-sfw')}
+                  onPresetClick={handlePresetClick}
+                  isMultiSelect={true}
+                  selectedPresets={selectedPresets}
+                  colorClass="text-cyan-400"
+                />
+              </div>
+              <div className="border-t border-emerald-700/30">
+                <PresetCategory 
+                  title={
+                    <div className="flex items-center gap-2">
+                      <Eye className="h-3 w-3 text-yellow-400" />
+                      <span>NSFW</span>
+                      <InfoTooltip text="Adult-oriented poses with suggestive positioning and sensual elements. 18+ content only." />
+                    </div>
+                  }
+                  presets={nsfwPoses}
+                  isOpen={activeTab === 'nsfw'}
+                  onToggle={() => handleTabToggle('nsfw')}
+                  onPresetClick={handlePresetClick}
+                  isMultiSelect={true}
+                  selectedPresets={selectedPresets}
+                  colorClass="text-yellow-400"
+                />
+              </div>
+              <div className="border-t border-emerald-700/30">
+                <PresetCategory 
+                  title={
+                    <div className="flex items-center gap-2">
+                      <Flame className="h-3 w-3 text-red-400" />
+                      <span>Hardcore</span>
+                      <InfoTooltip text="Explicit adult poses featuring intimate acts and hardcore scenarios. 18+ content only." />
+                    </div>
+                  }
+                  presets={hardcorePoses}
+                  isOpen={activeTab === 'hardcore'}
+                  onToggle={() => handleTabToggle('hardcore')}
+                  onPresetClick={handlePresetClick}
+                  isMultiSelect={true}
+                  selectedPresets={selectedPresets}
+                  colorClass="text-red-400"
+                />
+              </div>
             </div>
           </div>
       )}

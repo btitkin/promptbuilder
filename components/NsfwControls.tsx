@@ -4,6 +4,7 @@ import { CompactToggle } from './CompactToggle';
 import { InfoTooltip } from './InfoTooltip';
 import type { NsfwSettingsState, NsfwMode } from '../types';
 import { ChevronDownIcon } from './icons';
+import { ShieldAlert } from 'lucide-react';
 
 interface NsfwControlsProps {
     settings: NsfwSettingsState;
@@ -17,7 +18,7 @@ const modes: { id: NsfwMode; label: string }[] = [
 ];
 
 export const NsfwControls: React.FC<NsfwControlsProps> = ({ settings, onChange }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(true);
 
     const handleModeChange = (mode: NsfwMode) => {
         onChange({ ...settings, mode });
@@ -36,45 +37,52 @@ export const NsfwControls: React.FC<NsfwControlsProps> = ({ settings, onChange }
     };
 
     const renderEnhanceOptions = () => (
-        <div className="space-y-3 pt-4 mt-4 border-t border-gray-700">
+        <div className="space-y-3 pt-4 mt-4 border-t border-rose-700/30">
             <div className="flex items-center gap-2">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase">Enhance Options</h4>
-                <InfoTooltip text="Control which parts of your description the 'Enhance' button and AI Imagination will modify. If a category is OFF, it will be preserved exactly as you wrote it." />
+                <InfoTooltip text="Control which parts of your description the 'Enhance' button will modify. If a category is off, it will be preserved exactly as you wrote it." />
             </div>
             <CompactToggle 
                 label="Person"
                 checked={settings.enhancePerson}
                 onChange={(checked) => handleToggleChange('enhancePerson', checked)}
+                tooltip="When ON, the AI can modify and enhance character descriptions, appearance, and attributes."
             />
             <CompactToggle 
                 label="Pose"
                 checked={settings.enhancePose}
                 onChange={(checked) => handleToggleChange('enhancePose', checked)}
+                tooltip="When ON, the AI can modify and enhance pose descriptions and body positioning."
             />
             <CompactToggle 
                 label="Location"
                 checked={settings.enhanceLocation}
                 onChange={(checked) => handleToggleChange('enhanceLocation', checked)}
+                tooltip="When ON, the AI can modify and enhance location descriptions, settings, and environments."
             />
         </div>
     );
 
     return (
-        <div className="bg-gray-900/50 rounded-md border border-gray-700">
+        <div className="bg-gray-900/50 rounded-md border border-rose-700/50">
             <button 
-                onClick={() => setIsOpen(prev => !prev)} 
+                onClick={() => setIsCollapsed(prev => !prev)} 
                 className="w-full flex justify-between items-center p-4 focus:outline-none"
-                aria-expanded={isOpen}
+                aria-expanded={!isCollapsed}
               >
-                <h3 className="text-sm font-medium text-gray-400">Content Rules</h3>
-                <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                <div className="flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4 text-rose-400" />
+                    <h3 className="text-sm font-medium text-rose-400">Content Rules</h3>
+                    <InfoTooltip text="Configure content filtering and safety settings for generated images." />
+                </div>
+                <ChevronDownIcon className={`h-5 w-5 text-rose-400 transition-transform duration-200 ${!isCollapsed ? 'rotate-180' : ''}`} />
             </button>
-            {isOpen && (
+            {!isCollapsed && (
                  <div className="px-4 pb-4 space-y-4 animate-fade-in">
                     <div>
                         <div className="flex items-center gap-2 mb-2">
                             <label className="block text-sm font-medium text-gray-400">Content Mode</label>
-                            <InfoTooltip text="Safe: No explicit content. NSFW: Adds explicit anatomy. Hardcore: Adds explicit actions and scenarios." />
+                            <InfoTooltip text="Safe: No explicit content. Nsfw: Adds explicit anatomy. Hardcore: Adds explicit actions and scenarios." />
                         </div>
                         <div className="flex space-x-2 rounded-md bg-gray-700 p-1">
                             {modes.map(mode => (
@@ -91,18 +99,12 @@ export const NsfwControls: React.FC<NsfwControlsProps> = ({ settings, onChange }
                         </div>
                     </div>
 
-                    <div className="pt-4 border-t border-gray-700">
-                        <CompactToggle
-                            label="AI Imagination"
-                            checked={settings.aiImagination}
-                            onChange={(checked) => handleToggleChange('aiImagination', checked)}
-                            tooltip="When ON, the AI has creative freedom to add new ideas, themes, and details beyond your original description, potentially creating surprising results."
-                        />
-                    </div>
-
-
                     {settings.mode === 'nsfw' && (
-                        <div className="animate-fade-in pt-4 border-t border-gray-700">
+                        <div className="animate-fade-in pt-4 border-t border-rose-700/30">
+                            <div className="flex items-center gap-2 mb-2">
+                                <label className="block text-sm font-medium text-gray-400">NSFW Intensity</label>
+                                <InfoTooltip text="Controls how explicit the nsfw content becomes. Higher values add more explicit details and anatomy." />
+                            </div>
                             <Slider 
                                 label="NSFW Intensity"
                                 value={settings.nsfwLevel}
@@ -110,10 +112,14 @@ export const NsfwControls: React.FC<NsfwControlsProps> = ({ settings, onChange }
                             />
                         </div>
                     )}
-                    
+
                     {settings.mode === 'hardcore' && (
-                        <div className="animate-fade-in pt-4 border-t border-gray-700">
-                             <Slider 
+                        <div className="animate-fade-in pt-4 border-t border-rose-700/30">
+                            <div className="flex items-center gap-2 mb-2">
+                                <label className="block text-sm font-medium text-gray-400">Hardcore Intensity</label>
+                                <InfoTooltip text="Controls the intensity of hardcore scenarios and actions. Higher values add more extreme content." />
+                            </div>
+                            <Slider 
                                 label="Hardcore Intensity"
                                 value={settings.hardcoreLevel}
                                 onChange={handleHardcoreLevelChange}

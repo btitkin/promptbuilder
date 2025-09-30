@@ -2,7 +2,8 @@
 
 // FIX: Implemented missing AI service functions to resolve compilation errors.
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import type { StructuredPrompt, NsfwSettingsState, StyleFilter, CharacterSettingsState, Gender, FemaleBodyType, MaleBodyType, Ethnicity, HeightRange, BreastSize, HipsSize, ButtSize, PenisSize, MuscleDefinition, FacialHair } from '../types';
+import type { StructuredPrompt, NsfwSettingsState, StyleFilter, CharacterSettingsState, Gender, FemaleBodyType, MaleBodyType, Ethnicity, HeightRange, AgeRange, BreastSize, HipsSize, ButtSize, PenisSize, MuscleDefinition, FacialHair, PromptVariationsResult } from '../types';
+import { cleanLLMText, normalizeNarrative, normalizeToTagsLine as normalizeToTagsLineCentral } from './sanitizer';
 
 const promptSchema = {
     type: Type.OBJECT,
@@ -76,19 +77,19 @@ const randomTagsArraySchema = {
 };
 
 const getNsfwIntensityDescription = (level: number): string => {
-    if (level <= 2) return "artistically suggestive with tasteful nudity.";
-    if (level <= 4) return "clearly suggestive with some explicit nudity and sensual themes.";
-    if (level <= 6) return "moderately explicit with a focus on detailed anatomy and provocative situations.";
-    if (level <= 8) return "highly explicit with detailed anatomy and strong erotic themes.";
-    return "extremely explicit and provocative, intended for mature audiences only.";
+    if (level <= 2) return "include tasteful nudity: nude, naked, bare skin, exposed. Keep it artistic and subtle.";
+    if (level <= 4) return "include sensual themes: sensual, suggestive pose, alluring, revealing. Add some explicit nudity.";
+    if (level <= 6) return "include provocative elements: provocative, seductive, enticing, erotic. Focus on detailed anatomy.";
+    if (level <= 8) return "include strong erotic themes: tempting, captivating, mesmerizing, voluptuous. Detailed anatomy and strong sensuality.";
+    return "include maximum explicit content: intoxicating, ravishing, beguiling, luscious. Extremely detailed anatomy and full explicit details.";
 };
 
 const getHardcoreIntensityDescription = (level: number): string => {
-    if (level <= 2) return "depicting a solo person in an explicit, intimate context.";
-    if (level <= 4) return "depicting two people engaged in an intimate, explicit act.";
-    if (level <= 6) return "depicting a group of people in a highly explicit, interactive scenario.";
-    if (level <= 8) return "depicting unconventional and extreme explicit scenarios involving themes of power dynamics and specific fetishes.";
-    return "depicting the most extreme and taboo explicit content, exploring the furthest limits of eroticism with no restrictions.";
+    if (level <= 2) return "include intimate context: sexual, intimate, passionate. Solo person explicit acts.";
+    if (level <= 4) return "include explicit acts: masturbation, self-pleasure, touching herself, touching himself. Two people engaged.";
+    if (level <= 6) return "include interactive scenarios: pillow humping, grinding, thrusting, moaning. Group explicit interactions.";
+    if (level <= 8) return "include extreme scenarios: orgasm, climax, ecstasy, pleasure. Unconventional explicit themes.";
+    return "include maximum hardcore: explicit sex, intercourse, penetration, raw passion. Most extreme explicit content with full details.";
 };
 
 const getBodyTypeDescription = (gender: Gender, bodyType: CharacterSettingsState['bodyType']): string => {
@@ -117,8 +118,7 @@ const getEthnicityDescription = (ethnicity: Ethnicity): string => {
 
 const getHeightDescription = (height: HeightRange): string => {
     if (height === 'any') return '';
-    const description = height.replace(/\s*\(.+\)/, '');
-    return `The subject's height MUST be in the '${description}' range. For reference: ${height}. This is a strict physical trait.`;
+    return `The subject's height MUST be ${height}. This is a strict physical trait.`;
 };
 
 const getBreastSizeDescription = (size: BreastSize): string => {
@@ -151,107 +151,54 @@ const getFacialHairDescription = (hair: FacialHair): string => {
     return `The male subject MUST have facial hair described as: ${hair}. This is a strict visual requirement.`;
 };
 
+export const generateText = async (apiKey: string, prompt: string): Promise<string> => {
+  const ai = new GoogleGenAI(apiKey);
+  const result = await ai.getGenerativeModel({ model: 'gemini-pro' }).generateContent(prompt);
+  return result.response.text();
+};
 
-const getResponseTextOrThrow = (response: GenerateContentResponse, context: string): string => {
-    const textOutput = response.text;
+// Simplified imagination paragraph generator for stability
+export const generateImaginationParagraph = async (
+  apiKey: string,
+  nsfwSettings: NsfwSettingsState
+): Promise<string> => {
+  const systemInstruction = [
+    'You are a creative writer. Your only task is to write a single paragraph.',
+    'CRITICAL RULE: Your output MUST be a PARAGRAPH with full sentences.',
+    `Content Policy: The content of the paragraph MUST match the user's SFW/NSFW/Hardcore setting: ${nsfwSettings.mode}.`
+  ].join('\n');
 
-    if (typeof textOutput === 'string' && textOutput.trim()) {
-        return textOutput.trim();
+  const userText = 'Write one single, creative, descriptive paragraph in English about a character in a compelling scene.';
+
+  const ai = new GoogleGenAI({ apiKey });
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: userText }]
+      }
+    ],
+    config: {
+      systemInstruction,
+      responseMimeType: 'text/plain'
     }
-    
-    let errorMessage = `The AI returned an empty response during ${context}.`;
-    const blockReason = response.promptFeedback?.blockReason;
-    
-    if (blockReason) {
-        errorMessage = `Request blocked by content policy during ${context}. Reason: ${blockReason}.`;
-        const harmfulCategories = response.promptFeedback?.safetyRatings
-            ?.filter(rating => rating.probability !== 'NEGLIGIBLE' && rating.probability !== 'LOW')
-            .map(rating => rating.category.replace('HARM_CATEGORY_', ''))
-            .join(', ');
-        
-        if (harmfulCategories) {
-            errorMessage += ` Categories flagged: ${harmfulCategories}.`;
-        }
-    } else {
-        errorMessage += ` This may be due to the content policy. Please adjust your prompt and try again.`;
-    }
-    
-    console.error(`Gemini API error during ${context}:`, JSON.stringify(response, null, 2));
-    throw new Error(errorMessage);
+  });
+
+  const text = (response as any)?.response?.text?.() ?? '';
+  let cleaned = cleanLLMText(text).trim();
+  cleaned = normalizeNarrative(cleaned);
+  return cleaned || '';
 };
 
 function cleanModelText(text: string): string {
-    return text
-        // remove labels
-        .replace(/^\s*(Prompt|Output|Response|Result|Negative Prompt)\s*:\s*/gim, '')
-        .replace(/^\s*(User|Assistant|System|Camera|Human)\s*:\s*/gim, '')
-        .replace(/^\s*(Here(?:'s| is)|So,|Sure,|Okay|Alright|Great,)\s*/gim, '')
-        // strip OOC/SYS markers
-        .replace(/\[\/?SYS\]|\(OOC\)|^\s*OOC\s*:\s*/gim, '')
-        // strip additional chat-template/system tokens
-        .replace(/\[\/?INST\]|<<?\/?SYS>>|<\/?SYS>|<\/?SYSTEM>|<\/?assistant>|<\/?user>/gi, '')
-        // common option headers and menu-like boilerplate
-        .replace(/^\s*(Options?|Option\s*\d+[^:]{0,40})\s*:\s*/gim, '')
-        .replace(/^\s*(Choose|Pick|Select)\b[^.!?\n]*[.!?]\s*/gim, '')
-        // remove generic leading label like "Label:"
-        .replace(/^\s*[\w\s'-]+:\s*/im, '')
-        // remove backticks and fences but keep inner content
-        .replace(/```[\s\S]*?```/g, (m) => m.replace(/```/g, ''))
-        .replace(/^`+|`+$/g, '')
-        // remove wrapping quotes
-        .replace(/^["“”]|["“”]$/g, '')
-        // collapse whitespace
-        .replace(/[\t ]+/g, ' ')
-        .replace(/\s*\n\s*/g, '\n')
-        .trim();
+    return cleanLLMText(text);
 }
 
 // Convert any noisy/multiline output into a single, comma-separated tag line
 function normalizeToTagsLine(text: string, maxTags: number = 25): string {
-    let s = cleanModelText(text || '');
-
-    // Convert common separators and newlines to commas
-    s = s.replace(/[;|]/g, ', ');
-    s = s.replace(/\r?\n+/g, ', ');
-
-    // Remove list bullets and numeric markers
-    s = s.replace(/(^|, )\s*(?:\(?\d+\)?[.)]|[-*•])\s+/g, '$1');
-
-    // Remove lingering role/system tokens
-    s = s.replace(/\b(?:OOC|SYS|SYSTEM|USER|ASSISTANT)\b\s*:?/gi, '');
-
-    // Normalize quotes/parentheses/backticks
-    s = s.replace(/[“”"`]/g, '').replace(/[()\[\]]/g, '');
-
-    // Convert sentence periods to commas
-    s = s.replace(/\.(\s+|$)/g, ', ');
-
-    // Collapse duplicate commas/spaces
-    s = s.replace(/\s*,\s*/g, ', ');
-    s = s.replace(/(?:,\s*){2,}/g, ', ');
-
-    // Split, trim, dedupe, limit
-    const parts = s.split(',').map(t => t.trim()).filter(Boolean);
-    const seen = new Set<string>();
-    const tags: string[] = [];
-    for (const p of parts) {
-        const tag = p.replace(/\s{2,}/g, ' ').replace(/[.]+$/g, '').trim();
-        if (!tag) continue;
-        const key = tag.toLowerCase();
-        if (!seen.has(key)) {
-            seen.add(key);
-            tags.push(tag);
-        }
-        if (tags.length >= maxTags) break;
-    }
-
-    if (tags.length === 0) {
-        return 'portrait, single subject, natural light, shallow depth of field, cinematic lighting, high detail, sharp focus, photorealistic';
-    }
-
-    return tags.join(', ');
+    return normalizeToTagsLineCentral(text || '', maxTags);
 }
-
 
 const buildSystemInstructionForVariations = (
     numVariations: number,
@@ -292,18 +239,31 @@ Key objectives:
     if (characterSettings.ethnicity !== 'any') instruction += `\n- **Ethnicity Constraint**: ${getEthnicityDescription(characterSettings.ethnicity)}`;
     if (characterSettings.height !== 'any') instruction += `\n- **Height Constraint**: ${getHeightDescription(characterSettings.height)}`;
 
+    // Overlays
+    if (characterSettings.overlays?.furry) instruction += `\n- **Overlay Constraint**: include subtle anthropomorphic animal traits (ears, tail) while keeping a human physique (no full-animal).`;
+    if (characterSettings.overlays?.monster) instruction += `\n- **Overlay Constraint**: include demonic/monster features (e.g., horns, fangs) while maintaining human anatomy.`;
+    if (characterSettings.overlays?.sciFi) instruction += `\n- **Overlay Constraint**: include futuristic sci‑fi elements (technology, cybernetic augmentations, neon lighting).`;
     if (characterSettings.gender === 'female') {
         if (characterSettings.breastSize !== 'any') instruction += `\n- **Breast Size Constraint**: ${getBreastSizeDescription(characterSettings.breastSize)}`;
         if (characterSettings.hipsSize !== 'any') instruction += `\n- **Hips Size Constraint**: ${getHipsSizeDescription(characterSettings.hipsSize)}`;
         if (characterSettings.buttSize !== 'any') instruction += `\n- **Butt Size Constraint**: ${getButtSizeDescription(characterSettings.buttSize)}`;
     }
 
-    if (characterSettings.gender === 'male') {
-        if (characterSettings.muscleDefinition !== 'any') instruction += `\n- **Muscle Definition Constraint**: ${getMuscleDefinitionDescription(characterSettings.muscleDefinition)}`;
-        if (characterSettings.facialHair !== 'any') instruction += `\n- **Facial Hair Constraint**: ${getFacialHairDescription(characterSettings.facialHair)}`;
+    if (characterSettings.gender === 'futanari') {
+        // Futanari: Female attributes + penis size only
+        if (characterSettings.breastSize !== 'any') instruction += `\n- **Breast Size Constraint**: ${getBreastSizeDescription(characterSettings.breastSize)}`;
+        if (characterSettings.hipsSize !== 'any') instruction += `\n- **Hips Size Constraint**: ${getHipsSizeDescription(characterSettings.hipsSize)}`;
+        if (characterSettings.buttSize !== 'any') instruction += `\n- **Butt Size Constraint**: ${getButtSizeDescription(characterSettings.buttSize)}`;
         if (characterSettings.penisSize !== 'any' && (nsfwSettings.mode === 'nsfw' || nsfwSettings.mode === 'hardcore')) {
              instruction += `\n- **Penis Size Constraint**: ${getPenisSizeDescription(characterSettings.penisSize)}`;
         }
+    }
+
+    if (characterSettings.gender === 'male') {
+        if (characterSettings.bodyType !== 'any') instruction += `\n- Body: ${getBodyTypeDescription('male', characterSettings.bodyType)}`;
+        if (characterSettings.penisSize !== 'any') instruction += `\n- ${getPenisSizeDescription(characterSettings.penisSize)}`;
+        if (characterSettings.muscleDefinition !== 'any') instruction += `\n- ${getMuscleDefinitionDescription(characterSettings.muscleDefinition)}`;
+        if (characterSettings.facialHair !== 'any') instruction += `\n- ${getFacialHairDescription(characterSettings.facialHair)}`;
     }
 
     instruction += `\n- **Style Constraint**: The overall style MUST be '${styleFilter.main}' with a '${styleFilter.sub}' sub-style.`;
@@ -311,14 +271,38 @@ Key objectives:
         instruction += ` The prompt must describe a scene as if it were a real photograph. Absolutely AVOID any terms related to anime, cartoons, illustrations, paintings, digital art, or 3D renders. Prioritize authenticity.`;
         
         switch (styleFilter.sub) {
-            case 'amateur':
-                instruction += ` The 'amateur' sub-style requires a candid, unposed, and natural look. AVOID descriptions of perfect compositions, professional studio lighting, or overly idealized subjects. The scene should feel spontaneous and authentic, like a photo taken by a friend.`;
+            case 'film photography':
+                instruction += ` The 'film photography' sub-style requires authentic, analog aesthetics. Focus on film grain, natural lighting, and the characteristic look of traditional photography.`;
                 break;
-            case 'professional':
-                instruction += ` The 'professional' sub-style implies a high-quality, well-composed shot. Focus on photographic details like camera models, lens types (e.g., 85mm f/1.8), and specific lighting setups (e.g., three-point lighting).`;
+            case 'webcam':
+                instruction += ` The 'webcam' sub-style implies lower quality, casual photography with typical webcam characteristics like softer focus and basic lighting.`;
                 break;
-            case 'flash':
-                instruction += ` The 'flash' sub-style implies direct, on-camera flash. Describe harsh shadows, bright highlights, and a 'paparazzi', 'nightclub', or 'disposable camera' feel.`;
+            case 'spycam':
+                instruction += ` The 'spycam' sub-style suggests hidden camera aesthetics with candid, unposed subjects and often grainy or low-light conditions.`;
+                break;
+            case 'cctv':
+                instruction += ` The 'cctv' sub-style implies security camera footage with wide angles, harsh lighting, and surveillance camera characteristics.`;
+                break;
+            case 'smartphone':
+                instruction += ` The 'smartphone' sub-style suggests mobile phone photography with typical smartphone camera characteristics and casual composition.`;
+                break;
+            case 'polaroid':
+                instruction += ` The 'polaroid' sub-style requires instant camera aesthetics with characteristic borders, vintage colors, and nostalgic feel.`;
+                break;
+            case 'analog':
+                instruction += ` The 'analog' sub-style emphasizes traditional film photography with authentic grain, natural colors, and classic photographic techniques.`;
+                break;
+            case 'editorial':
+                instruction += ` The 'editorial' sub-style implies professional magazine-quality photography with polished composition and lighting.`;
+                break;
+            case 'portrait studio':
+                instruction += ` The 'portrait studio' sub-style suggests professional studio photography with controlled lighting and formal composition.`;
+                break;
+            case 'street photography':
+                instruction += ` The 'street photography' sub-style emphasizes candid urban scenes with natural lighting and documentary-style composition.`;
+                break;
+            case 'fashion editorial':
+                instruction += ` The 'fashion editorial' sub-style implies high-fashion photography with dramatic lighting and artistic composition.`;
                 break;
         }
     } else { // anime
@@ -337,13 +321,62 @@ Key objectives:
             break;
     }
 
-    if (nsfwSettings.aiImagination) {
-        instruction += `\n- **AI Imagination**: You have creative freedom to introduce new elements, themes, and details beyond the user's initial description to create more unique and surprising results.`;
-    } else {
-        instruction += `\n- **AI Imagination**: Stick closely to the user's original concept. Do not introduce radically new ideas; only enhance the existing ones.`;
+// Creative scope: default balanced imaginative allowance
+instruction += '\n- Creative scope: you MAY introduce tasteful imaginative elements (fantasy/sci-fi/surreal) and unexpected but coherent details, if they enrich the scene.';
+
+    switch (characterSettings.gender) {
+        case 'male':
+            instruction += `\n- Gender constraint: all depicted individuals MUST be male.`;
+            break;
+        case 'female':
+            instruction += `\n- Gender constraint: all depicted individuals MUST be female.`;
+            break;
+        case 'mixed':
+            instruction += `\n- Gender constraint: include both male and female individuals.`;
+            break;
     }
 
-    instruction += "\n\nFinally, ensure the output is a single, valid JSON object that strictly adheres to the provided schema. Do not add any commentary before or after the JSON.\n\nAdditional rules:\n- No dialogues, no prefixes, no roles, no commands.\n- Do not include words like 'Prompt:', 'Negative Prompt:', 'User:', 'Camera:'.\n- Output must be a clean JSON object only."
+    if (characterSettings.age && characterSettings.age !== 'any') instruction += `\n- Age: main subject age in '${characterSettings.age}'.`;
+
+    if (characterSettings.bodyType && characterSettings.bodyType !== 'any' && (characterSettings.gender === 'male' || characterSettings.gender === 'female')) {
+        instruction += `\n- Body type: ${getBodyTypeDescription(characterSettings.gender, characterSettings.bodyType)}`;
+    }
+    if (characterSettings.ethnicity && characterSettings.ethnicity !== 'any') instruction += `\n- Ethnicity: ${getEthnicityDescription(characterSettings.ethnicity)}`;
+    if (characterSettings.height && characterSettings.height !== 'any') instruction += `\n- Height: ${getHeightDescription(characterSettings.height)}`;
+
+    if (characterSettings.gender === 'female') {
+        if (characterSettings.breastSize && characterSettings.breastSize !== 'any') instruction += `\n- ${getBreastSizeDescription(characterSettings.breastSize)}`;
+        if (characterSettings.hipsSize && characterSettings.hipsSize !== 'any') instruction += `\n- ${getHipsSizeDescription(characterSettings.hipsSize)}`;
+        if (characterSettings.buttSize && characterSettings.buttSize !== 'any') instruction += `\n- ${getButtSizeDescription(characterSettings.buttSize)}`;
+    }
+
+    if (characterSettings.gender === 'futanari') {
+        // Futanari: Female attributes + penis size only
+        if (characterSettings.breastSize && characterSettings.breastSize !== 'any') instruction += `\n- ${getBreastSizeDescription(characterSettings.breastSize)}`;
+        if (characterSettings.hipsSize && characterSettings.hipsSize !== 'any') instruction += `\n- ${getHipsSizeDescription(characterSettings.hipsSize)}`;
+        if (characterSettings.buttSize && characterSettings.buttSize !== 'any') instruction += `\n- ${getButtSizeDescription(characterSettings.buttSize)}`;
+        if (characterSettings.penisSize && characterSettings.penisSize !== 'any' && (nsfwSettings.mode === 'nsfw' || nsfwSettings.mode === 'hardcore')) instruction += `\n- ${getPenisSizeDescription(characterSettings.penisSize)}`;
+    }
+
+    if (characterSettings.gender === 'male') {
+        if (characterSettings.muscleDefinition && characterSettings.muscleDefinition !== 'any') instruction += `\n- ${getMuscleDefinitionDescription(characterSettings.muscleDefinition)}`;
+        if (characterSettings.facialHair && characterSettings.facialHair !== 'any') instruction += `\n- ${getFacialHairDescription(characterSettings.facialHair)}`;
+        if (characterSettings.penisSize && characterSettings.penisSize !== 'any' && (nsfwSettings.mode === 'nsfw' || nsfwSettings.mode === 'hardcore')) instruction += `\n- ${getPenisSizeDescription(characterSettings.penisSize)}`;
+    }
+
+    switch (nsfwSettings.mode) {
+        case 'off':
+            instruction += `\n- Content rule: MUST be SFW.`;
+            break;
+        case 'nsfw':
+            instruction += `\n- NSFW level ${nsfwSettings.nsfwLevel}/10: ${getNsfwIntensityDescription(nsfwSettings.nsfwLevel)}`;
+            break;
+        case 'hardcore':
+            instruction += `\n- Hardcore level ${nsfwSettings.hardcoreLevel}/10: ${getHardcoreIntensityDescription(nsfwSettings.hardcoreLevel)}`;
+            break;
+    }
+
+    instruction += `\n- Style guideline: subtly evoke '${styleFilter.main}'${styleFilter.sub && styleFilter.sub !== 'any' ? `/${styleFilter.sub}` : ''} through vocabulary and lighting; do not name styles as tags.`;
 
     return instruction;
 };
@@ -357,7 +390,7 @@ export const generatePromptVariations = async (
     styleFilter: StyleFilter,
     selectedModel: string,
     characterSettings: CharacterSettingsState
-): Promise<{ structuredPrompts: StructuredPrompt[], negativePrompt: string }> => {
+): Promise<PromptVariationsResult> => {
     const ai = new GoogleGenAI({ apiKey });
 
     const systemInstruction = buildSystemInstructionForVariations(numVariations, nsfwSettings, styleFilter, selectedModel, characterSettings);
@@ -388,14 +421,16 @@ const buildSystemInstructionForEnhancement = (
     styleFilter: StyleFilter,
     characterSettings: CharacterSettingsState
 ): string => {
-    // Enhance -> enrich into a vivid paragraph (no tags)
-    let instruction = `You are a visual scene writer. Enrich the user's short description into a single vivid paragraph of 2–3 sentences (roughly 45–100 words).
+    // Enhance -> enrich into a vivid, writerly paragraph (no tags)
+    let instruction = `You are a creative visual scene writer. Rewrite and enrich the user's short description into ONE short paragraph of 3–6 sentences (about 80–180 words).
 
 Output rules (STRICT):
 - Output PLAIN TEXT only — no JSON, no lists, no headings, no roles, no labels, no code blocks.
-- Do NOT output comma-separated tags; write natural prose.
-- Focus on the visual scene: subject, pose/action, setting/background, lighting/mood, atmosphere, composition cues.
-- Maintain coherence with the user's input. Add tasteful, small details without contradicting constraints.
+- Do NOT output comma-separated tags; write natural prose with flowing sentences.
+- Add imaginative, story-like details: a sense of moment, mood, and subtle narrative tension; use dynamic verbs and sensory cues (light, texture, sound, atmosphere).
+- Focus on the visual scene: subject, pose/action, setting/background, lighting/mood, atmosphere, and composition hints (framing, distance) when appropriate.
+- Maintain coherence with the user's input and constraints. Do not contradict them.
+- Avoid style tag names or parameter-like tokens (e.g., (best quality), --ar). Speak naturally.
 - End your output with <<EOD>> and nothing after it.`;
 
     const enhancementFocus: string[] = [];
@@ -403,6 +438,9 @@ Output rules (STRICT):
     if (nsfwSettings.enhancePose) enhancementFocus.push('their pose and action');
     if (nsfwSettings.enhanceLocation) enhancementFocus.push('the location and background');
     if (enhancementFocus.length > 0) instruction += `\n- Focus areas: ${enhancementFocus.join(', ')}.`;
+
+    // Remove imaginationRule, default to balanced creative scope
+    instruction += '\n- Creative scope: you MAY introduce tasteful imaginative elements (fantasy/sci-fi/surreal) and unexpected but coherent details, if they enrich the scene.';
 
     switch (characterSettings.gender) {
         case 'male':
@@ -430,6 +468,14 @@ Output rules (STRICT):
         if (characterSettings.buttSize && characterSettings.buttSize !== 'any') instruction += `\n- ${getButtSizeDescription(characterSettings.buttSize)}`;
     }
 
+    if (characterSettings.gender === 'futanari') {
+        // Futanari: Female attributes + penis size only
+        if (characterSettings.breastSize && characterSettings.breastSize !== 'any') instruction += `\n- ${getBreastSizeDescription(characterSettings.breastSize)}`;
+        if (characterSettings.hipsSize && characterSettings.hipsSize !== 'any') instruction += `\n- ${getHipsSizeDescription(characterSettings.hipsSize)}`;
+        if (characterSettings.buttSize && characterSettings.buttSize !== 'any') instruction += `\n- ${getButtSizeDescription(characterSettings.buttSize)}`;
+        if (characterSettings.penisSize && characterSettings.penisSize !== 'any' && (nsfwSettings.mode === 'nsfw' || nsfwSettings.mode === 'hardcore')) instruction += `\n- ${getPenisSizeDescription(characterSettings.penisSize)}`;
+    }
+
     if (characterSettings.gender === 'male') {
         if (characterSettings.muscleDefinition && characterSettings.muscleDefinition !== 'any') instruction += `\n- ${getMuscleDefinitionDescription(characterSettings.muscleDefinition)}`;
         if (characterSettings.facialHair && characterSettings.facialHair !== 'any') instruction += `\n- ${getFacialHairDescription(characterSettings.facialHair)}`;
@@ -441,10 +487,10 @@ Output rules (STRICT):
             instruction += `\n- Content rule: MUST be SFW.`;
             break;
         case 'nsfw':
-            instruction += `\n- Content rule: sensual undertones allowed, around ${nsfwSettings.nsfwLevel}/10; avoid explicit mechanics or unsafe content.`;
+            instruction += `\n- NSFW level ${nsfwSettings.nsfwLevel}/10: ${getNsfwIntensityDescription(nsfwSettings.nsfwLevel)}`;
             break;
         case 'hardcore':
-            instruction += `\n- Content rule: can be explicit around ${nsfwSettings.hardcoreLevel}/10 but never illegal or unsafe.`;
+            instruction += `\n- Hardcore level ${nsfwSettings.hardcoreLevel}/10: ${getHardcoreIntensityDescription(nsfwSettings.hardcoreLevel)}`;
             break;
     }
 
@@ -465,9 +511,34 @@ export const enhanceDescription = async (
 
     const systemInstruction = buildSystemInstructionForEnhancement(nsfwSettings, styleFilter, characterSettings);
 
+    // Add a small novelty seed so repeated Enhance clicks add new, varied details
+    const noveltyPool = [
+        'a faint breeze that moves hair or clothing',
+        'smell cues like rain-soaked asphalt, sea salt, fresh pine, or warm spices',
+        'micro-actions: adjusting a strap, brushing hair back, fingertips grazing a surface',
+        'texture cues: weathered wood, cracked paint, misted glass, wet cobblestones, velvet, denim',
+        'light behavior: rim light, backlight glow, dappled leaves, neon spill, candle flicker',
+        'foreground elements framing the subject (doorframe, foliage, window edge)',
+        'environmental sounds: distant traffic, soft chatter, humming neon, rustling leaves',
+        'weather shifts: light drizzle, drifting snow, heat haze, drifting fog',
+        'camera hints: low-angle, over-the-shoulder, soft focus background, shallow depth of field',
+        'props: steaming mug, folded jacket, open book, umbrella, earbuds, water bottle'
+    ];
+    const pick = (n: number) => {
+        const pool = [...noveltyPool];
+        const out: string[] = [];
+        while (out.length < n && pool.length) {
+            const i = Math.floor(Math.random() * pool.length);
+            out.push(pool.splice(i, 1)[0]);
+        }
+        return out;
+    };
+    const seedItems = pick(3);
+    const seedLine = `Incorporate at least two of these if coherent: ${seedItems.join(', ')}.`;
+
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Enhance this description into a 2–3 sentence scene paragraph. End with <<EOD>>.\n\n${userInput}`,
+        contents: `Enhance this description into ONE short paragraph of 3–6 sentences (about 80–180 words). If it is already a full paragraph, build upon it by adding 2–4 fresh, concrete details and vary composition, lighting, or background; avoid repeating previous phrasing. ${seedLine} End with <<EOD>>.\n\n${userInput}`,
         config: {
             systemInstruction,
             responseMimeType: 'text/plain'
@@ -477,108 +548,436 @@ export const enhanceDescription = async (
     const text = getResponseTextOrThrow(response, 'description enhancement');
     let cleaned = cleanModelText(text).replace(/<<EOD>>\s*$/i, '').trim();
 
-    const sentences = cleaned.split(/(?<=[.!?])\s+/).filter(Boolean);
-    if (sentences.length > 3) cleaned = sentences.slice(0, 3).join(' ');
+    // Ensure terminal punctuation without enforcing a hard sentence limit
     if (!/[.!?]$/.test(cleaned) && cleaned.length > 0) cleaned += '.';
 
     return cleaned;
 };
 
 
-const buildSystemInstructionForRandom = (
-    nsfwSettings: NsfwSettingsState,
-    styleFilter: StyleFilter,
-    characterSettings: CharacterSettingsState,
-    selectedPresets: string[]
-): string => {
-    // Random -> produce a compact base narrative (shorter than Enhance)
-    let instruction = `You generate compact visual scene descriptions to inspire image prompts.
+export async function generateRandomDescription(
+  apiKey: string,
+  nsfwSettings: NsfwSettingsState,
+  styleFilter: StyleFilter,
+  characterSettings: CharacterSettingsState,
+  selectedPresets: string[]
+): Promise<string> {
+  const systemInstruction = [
+    'You are an observer writing a factual, objective report. Your task is to describe a person and their surroundings using ONLY direct, neutral, and descriptive language. You avoid ALL subjective, emotional, or poetic words. You state facts only. You write in full sentences to form a single paragraph.'
+  ].join('\n');
 
-Output rules:
-- Write ONE short paragraph of 1–2 sentences (about 35–70 words) describing the scene in natural prose.
-- PLAIN TEXT only. No JSON, no lists, no headings, no labels, no roles, no code blocks.
-- Do NOT output comma-separated tags.
-- Describe the visible subject, their pose/action, setting/background, lighting/mood.
-- End the paragraph with <<EOD>> and nothing after it.`;
+  // Helper: filter defaults like Any/Average/None/Unknown
+  const isDefault = (v?: string | null) => {
+    if (!v) return true;
+    const s = String(v).trim().toLowerCase();
+    return s === '' || s === 'any' || s === 'average' || s === 'none' || s === 'unknown';
+  };
+  const nsfwOn = nsfwSettings.mode !== 'off';
 
-    instruction += `\n- Subtly reflect the '${styleFilter.main}'${styleFilter.sub !== 'any' ? `/${styleFilter.sub}` : ''} aesthetic without naming styles as tags.`;
-    if (selectedPresets && selectedPresets.length > 0) {
-        instruction += `\n- You MUST incorporate ALL of these presets/themes: ${selectedPresets.join(', ')}.`;
+  const fixedConstraintsLines: string[] = [];
+  if (!isDefault(characterSettings.gender)) {
+    const g = characterSettings.gender;
+    const genderLabel = g === 'male' ? 'Male' : g === 'female' ? 'Female' : g === 'futanari' ? 'Futanari' : g === 'mixed' ? 'Mixed' : String(g);
+    fixedConstraintsLines.push(`Gender: ${genderLabel}`);
+    fixedConstraintsLines.push(`Age: ${toAgePhrase(characterSettings.age as AgeRange)}`);
+  }
+  if (!isDefault(characterSettings.age)) {
+    fixedConstraintsLines.push(`Age: ${toAgePhrase(characterSettings.age as AgeRange)}`);
+  }
+  // Additional fixed constraints from UI
+  if (!isDefault(characterSettings.height)) {
+    fixedConstraintsLines.push(`Height: ${toHeightPhrase(characterSettings.height as HeightRange)}`);
+  }
+  if (!isDefault(characterSettings.bodyType)) {
+    fixedConstraintsLines.push(`Body Type: ${toBodyTypePhrase(characterSettings.gender as Gender, characterSettings.bodyType)}`);
+  }
+  if (!isDefault(characterSettings.ethnicity)) {
+    fixedConstraintsLines.push(`Ethnicity: ${characterSettings.ethnicity}`);
+  }
+  // Include hair color derived from selected presets if present
+  if (selectedPresets && selectedPresets.length) {
+    const hairColorDerived = deriveHairColor(selectedPresets);
+    if (hairColorDerived) {
+      fixedConstraintsLines.push(`Hair Color: ${hairColorDerived}`);
     }
-
-    switch (characterSettings.gender) {
-        case 'male':
-            instruction += `\n- Gender: depict male subject(s).`;
-            break;
-        case 'female':
-            instruction += `\n- Gender: depict female subject(s).`;
-            break;
-        case 'mixed':
-            instruction += `\n- Gender: may include both male and female subjects.`;
-            break;
+  }
+  // Sexual attributes included only when NSFW mode is on
+  if (nsfwOn && !isDefault(characterSettings.breastSize)) {
+    fixedConstraintsLines.push(`Breast Size: ${toBreastPhrase(characterSettings.breastSize as BreastSize)}`);
+  }
+  if (!isDefault(characterSettings.hipsSize)) {
+    fixedConstraintsLines.push(`Hips Size: ${toHipsPhrase(characterSettings.hipsSize as HipsSize)}`);
+  }
+  if (!isDefault(characterSettings.buttSize)) {
+    fixedConstraintsLines.push(`Butt Size: ${toButtPhrase(characterSettings.buttSize as ButtSize)}`);
+  }
+  if (nsfwOn && !isDefault(characterSettings.penisSize)) {
+    fixedConstraintsLines.push(`Penis Size: ${toPenisPhrase(characterSettings.penisSize as PenisSize)}`);
+  }
+  if (!isDefault(characterSettings.muscleDefinition)) {
+    fixedConstraintsLines.push(`Muscle Definition: ${toMusclePhrase(characterSettings.muscleDefinition as MuscleDefinition)}`);
+  }
+  if (!isDefault(characterSettings.facialHair)) {
+    fixedConstraintsLines.push(`Facial Hair: ${toFacialHairPhrase(characterSettings.facialHair as FacialHair)}`);
+  }
+  if (!isDefault(characterSettings.characterStyle)) {
+    fixedConstraintsLines.push(`Character Style: ${characterSettings.characterStyle}`);
+  }
+  if (!isDefault(characterSettings.roleplay)) {
+    fixedConstraintsLines.push(`Roleplay: ${characterSettings.roleplay}`);
+  }
+  if (characterSettings.overlays) {
+    const overlayFlags: string[] = [];
+    if (characterSettings.overlays.furry) overlayFlags.push('Furry');
+    if (characterSettings.overlays.monster) overlayFlags.push('Monster');
+    if (characterSettings.overlays.sciFi) overlayFlags.push('SciFi');
+    if (overlayFlags.length) {
+      fixedConstraintsLines.push(`Overlays: ${overlayFlags.join(', ')}`);
     }
+  }
+  if (!isDefault(styleFilter?.main)) {
+    const styleParts = [`Main: ${styleFilter.main}`];
+    if (!isDefault(styleFilter.sub)) styleParts.push(`Sub: ${styleFilter.sub}`);
+    fixedConstraintsLines.push(`Style Filter: ${styleParts.join(', ')}`);
+  }
+  const nsfwAllowed = nsfwSettings.mode === 'off' ? 'Not allowed' : 'Allowed';
+  fixedConstraintsLines.push(`NSFW: ${nsfwAllowed}`);
 
-    if (characterSettings.age && characterSettings.age !== 'any') instruction += `\n- Age: '${characterSettings.age}'.`;
-    if (characterSettings.ethnicity && characterSettings.ethnicity !== 'any') instruction += `\n- Ethnicity: ${getEthnicityDescription(characterSettings.ethnicity)}`;
-    if (characterSettings.height && characterSettings.height !== 'any') instruction += `\n- Height: ${getHeightDescription(characterSettings.height)}`;
+  const fixedConstraintsBlock = [
+    '<fixed_constraints>',
+    ...fixedConstraintsLines,
+    '</fixed_constraints>'
+  ].join('\n');
 
-    if (characterSettings.gender === 'female') {
-        if (characterSettings.bodyType && characterSettings.bodyType !== 'any') instruction += `\n- Body: ${getBodyTypeDescription('female', characterSettings.bodyType)}`;
-        if (characterSettings.breastSize && characterSettings.breastSize !== 'any') instruction += `\n- ${getBreastSizeDescription(characterSettings.breastSize)}`;
-        if (characterSettings.hipsSize && characterSettings.hipsSize !== 'any') instruction += `\n- ${getHipsSizeDescription(characterSettings.hipsSize)}`;
-        if (characterSettings.buttSize && characterSettings.buttSize !== 'any') instruction += `\n- ${getButtSizeDescription(characterSettings.buttSize)}`;
+  console.log('[geminiService.generateRandomDescription] fixedConstraintsLines=', fixedConstraintsLines);
+  console.log('[geminiService.generateRandomDescription] fixedConstraintsBlock=\n' + fixedConstraintsBlock);
+  console.log('[geminiService.generateRandomDescription] nsfwSettings.mode=', nsfwSettings.mode, 'nsfwLevel=', nsfwSettings.nsfwLevel, 'hardcoreLevel=', nsfwSettings.hardcoreLevel, 'selectedPresets=', selectedPresets);
+
+  const userContent = [
+    'You will generate a factual description of a character based on a set of fixed rules and randomized details.',
+    '',
+    "FIXED CONSTRAINTS: These are the character's non-negotiable attributes. You MUST use them exactly as provided. Use only qualitative descriptors. DO NOT include numeric measurements.",
+    fixedConstraintsBlock,
+    selectedPresets && selectedPresets.length ? `You MUST incorporate ALL of these presets/themes: ${selectedPresets.join(', ')}.` : '',
+    '',
+    'DICTION AND TONE RULES:',
+    'Objective Language Only: You are FORBIDDEN from using subjective or emotional adjectives. Do not use words like: beautiful, captivating, graceful, serene, enchanting, elegant, mysterious, alluring, dreamy, magical, stunning, breathtaking.',
+    'No Names or Personas: DO NOT invent a name for the character (e.g., Sarah, Lila). DO NOT assign a role or archetype (e.g., princess, muse).',
+'No Numerical Body Measurements: You are FORBIDDEN from using numbers, measurements, or specific sizes to describe the character\'s body (e.g., "5\'7\" tall", "waist 24 inches", "32B"). Use ONLY the qualitative descriptions provided in the constraints (e.g., "tall", "slender build", "large breasts", "curvy hips").',
+    '',
+    'STRICT OUTPUT STRUCTURE: Generate a single paragraph. Describe the character\'s attributes in this precise order:',
+    'Start with core attributes like age, height, and build.',
+    'Then, hair color and style.',
+    'Then, facial features and eye color.',
+    'Then, specific body measurements from the constraints (if provided).',
+    'Then, clothing.',
+    'Finally, the location, pose, and lighting.',
+    '',
+    'CRUCIAL RULE: Your output must be a single paragraph of factual sentences. It must not be a list and it must not contain any of the forbidden subjective words.',
+    '',
+    'Now, generate a character description in English following all these rules.'
+  ].filter(Boolean).join('\n');
+
+  // Use existing GoogleGenAI pattern
+  const ai = new GoogleGenAI({ apiKey });
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: userContent,
+    config: {
+      systemInstruction,
+      responseMimeType: 'text/plain'
     }
+  });
 
-    if (characterSettings.gender === 'male') {
-        if (characterSettings.bodyType && characterSettings.bodyType !== 'any') instruction += `\n- Body: ${getBodyTypeDescription('male', characterSettings.bodyType)}`;
-        if (characterSettings.penisSize && characterSettings.penisSize !== 'any') instruction += `\n- ${getPenisSizeDescription(characterSettings.penisSize)}`;
-        if (characterSettings.muscleDefinition && characterSettings.muscleDefinition !== 'any') instruction += `\n- ${getMuscleDefinitionDescription(characterSettings.muscleDefinition)}`;
-        if (characterSettings.facialHair && characterSettings.facialHair !== 'any') instruction += `\n- ${getFacialHairDescription(characterSettings.facialHair)}`;
-    }
-
-    switch (nsfwSettings.mode) {
-        case 'off':
-            instruction += `\n- Content: SFW.`;
-            break;
-        case 'nsfw':
-            instruction += `\n- Content: sensual undertones allowed around ${nsfwSettings.nsfwLevel}/10; avoid explicit mechanics.`;
-            break;
-        case 'hardcore':
-            instruction += `\n- Content: explicit tone allowed around ${nsfwSettings.hardcoreLevel}/10 but never illegal or unsafe.`;
-            break;
-    }
-
-    return instruction;
-};
-
-// FIX: Implement the generateRandomDescription function to generate a random prompt using the Gemini API.
-export const generateRandomDescription = async (
-    apiKey: string,
-    nsfwSettings: NsfwSettingsState,
-    styleFilter: StyleFilter,
-    characterSettings: CharacterSettingsState,
-    selectedPresets: string[]
-): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey });
-    
-    const systemInstruction = buildSystemInstructionForRandom(nsfwSettings, styleFilter, characterSettings, selectedPresets);
-    
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: 'Write the paragraph now and end with <<EOD>>.',
-        config: {
-            systemInstruction: systemInstruction,
-            responseMimeType: 'text/plain'
-        }
-    });
-
-    const text = getResponseTextOrThrow(response, 'random description generation');
-    let cleaned = cleanModelText(text).replace(/<<EOD>>\s*$/i, '').trim();
-    const sentences = cleaned.split(/(?<=[.!?])\s+/).filter(Boolean);
-    if (sentences.length > 2) cleaned = sentences.slice(0, 2).join(' ');
-    if (!/[.!?]$/.test(cleaned) && cleaned.length > 0) cleaned += '.';
+  const text = getResponseTextOrThrow(response, 'random description generation');
+  let cleaned = cleanModelText(text).trim();
+  cleaned = normalizeNarrative(cleaned);
+  if (cleaned && cleaned.length > 5) {
     return cleaned;
+  }
+  return 'The description focuses on the character and follows the required factual structure.';
+}
+
+
+
+// Translator: map numeric/categorical attributes to descriptive phrases for constraints
+const toAgePhrase = (age: AgeRange): string => {
+  switch (age) {
+    case '18s': return 'young adult';
+    case '25s': return 'mid‑twenties';
+    case '30s': return 'thirties';
+    case '40s': return 'forties';
+    case '50s': return 'fifties';
+    case '60s': return 'sixties';
+    case '70+': return 'seventies or older';
+    default: return 'adult';
+  }
 };
+
+const toHeightPhrase = (height: HeightRange): string => {
+  switch (height) {
+    case 'very short': return 'very short';
+    case 'short': return 'short';
+    case 'average': return 'average height';
+    case 'tall': return 'tall';
+    default: return String(height);
+  }
+};
+
+const toBreastPhrase = (size: BreastSize): string => {
+  switch (size) {
+    case 'flat': return 'flat chest';
+    case 'small': return 'small breasts';
+    case 'medium': return 'medium breasts';
+    case 'large': return 'large breasts';
+    case 'huge': return 'huge breasts';
+    case 'gigantic': return 'gigantic breasts';
+    default: return String(size);
+  }
+};
+
+const toHipsPhrase = (size: HipsSize): string => {
+  switch (size) {
+    case 'narrow': return 'slender hips';
+    case 'average': return 'average hips';
+    case 'wide': return 'wide hips';
+    case 'extra wide': return 'extra-wide hips';
+    default: return String(size);
+  }
+};
+
+const toButtPhrase = (size: ButtSize): string => {
+  switch (size) {
+    case 'flat': return 'a flat butt';
+    case 'small': return 'a small butt';
+    case 'average': return 'an average butt';
+    case 'large': return 'a large butt';
+    case 'bubble': return 'a bubble butt';
+    default: return String(size);
+  }
+};
+
+const toBodyTypePhrase = (gender: Gender, bodyType: CharacterSettingsState['bodyType']): string => {
+  if (bodyType === 'any') return '';
+  const femaleLike = gender === 'female' || gender === 'futanari' || gender === 'trans female' || gender === 'nonbinary';
+  if (femaleLike) {
+    switch (bodyType as FemaleBodyType | 'any') {
+      case 'slim': return 'a slender build';
+      case 'curvy': return 'a soft and curvy body';
+      case 'athletic': return 'a slender and athletic build';
+      case 'instagram model': return 'a slim‑thick, hourglass figure';
+      default: return String(bodyType);
+    }
+  } else {
+    switch (bodyType as MaleBodyType | 'any') {
+      case 'slim': return 'a slender build';
+      case 'fat': return 'a heavy‑set build';
+      case 'muscular': return 'a muscular build';
+      case 'big muscular': return 'a massive, bodybuilder physique';
+      default: return String(bodyType);
+    }
+  }
+};
+
+const toPenisPhrase = (size: PenisSize): string => {
+  switch (size) {
+    case 'small': return 'a small penis';
+    case 'average': return 'an average penis';
+    case 'large': return 'a large penis';
+    case 'huge': return 'a huge penis';
+    case 'horse-hung': return 'a horse‑hung penis';
+    default: return String(size);
+  }
+};
+
+const toMusclePhrase = (def: MuscleDefinition): string => {
+  switch (def) {
+    case 'soft': return 'soft musculature';
+    case 'toned': return 'toned musculature';
+    case 'defined': return 'well‑defined muscles';
+    case 'ripped': return 'a ripped physique';
+    case 'bodybuilder': return 'bodybuilder‑level musculature';
+    default: return String(def);
+  }
+};
+
+const toFacialHairPhrase = (hair: FacialHair): string => {
+  switch (hair) {
+    case 'clean-shaven': return 'clean‑shaven';
+    case 'stubble': return 'stubble';
+    case 'goatee': return 'a goatee';
+    case 'mustache': return 'a mustache';
+    case 'full beard': return 'a full beard';
+    default: return String(hair);
+  }
+};
+
+// Hair color presets derived from HairPresets component (lowercased)
+const HAIR_COLOR_PRESETS = new Set<string>([
+  'blonde hair', 'brown hair', 'black hair', 'red hair', 'auburn hair',
+  'silver hair', 'white hair', 'pink hair', 'blue hair', 'purple hair',
+  'green hair', 'rainbow hair', 'multicolored hair', 'ombre hair', 'balayage hair',
+  'highlights', 'lowlights', 'platinum blonde', 'strawberry blonde', 'ash blonde',
+  'jet black', 'crimson red', 'burgundy', 'neon pink', 'pastel blue',
+  'emerald green', 'iridescent hair', 'fire hair', 'ice hair', 'galaxy hair',
+  'two-tone hair', 'split hair color'
+]);
+
+const toTitleCase = (s: string): string => s.replace(/\w\S*/g, (t) => t.charAt(0).toUpperCase() + t.slice(1));
+
+const deriveHairColor = (presets: string[]): string | null => {
+  if (!Array.isArray(presets)) return null;
+  for (const p of presets) {
+    const key = String(p).trim().toLowerCase();
+    if (HAIR_COLOR_PRESETS.has(key)) {
+      return toTitleCase(key);
+    }
+  }
+  return null;
+};
+
+async function generateRandomDescription_duplicate(
+  apiKey: string,
+  nsfwSettings: NsfwSettingsState,
+  styleFilter: StyleFilter,
+  characterSettings: CharacterSettingsState,
+  selectedPresets: string[]
+): Promise<string> {
+  const systemInstruction = [
+    'You are an observer writing a factual, objective report. Your task is to describe a person and their surroundings using ONLY direct, neutral, and descriptive language. You avoid ALL subjective, emotional, or poetic words. You state facts only. You write in full sentences to form a single paragraph.'
+  ].join('\n');
+
+  // Helper: filter defaults like Any/Average/None/Unknown
+  const isDefault = (v?: string | null) => {
+    if (!v) return true;
+    const s = String(v).trim().toLowerCase();
+    return s === '' || s === 'any' || s === 'average' || s === 'none' || s === 'unknown';
+  };
+  const nsfwOn = nsfwSettings.mode !== 'off';
+
+  const fixedConstraintsLines: string[] = [];
+  if (!isDefault(characterSettings.gender)) {
+    const g = characterSettings.gender;
+    const genderLabel = g === 'male' ? 'Male' : g === 'female' ? 'Female' : g === 'futanari' ? 'Futanari' : g === 'mixed' ? 'Mixed' : String(g);
+    fixedConstraintsLines.push(`Gender: ${genderLabel}`);
+  }
+  if (!isDefault(characterSettings.age)) {
+    fixedConstraintsLines.push(`Age: ${toAgePhrase(characterSettings.age as AgeRange)}`);
+  }
+  // Additional fixed constraints from UI
+  if (!isDefault(characterSettings.height)) {
+    fixedConstraintsLines.push(`Height: ${toHeightPhrase(characterSettings.height as HeightRange)}`);
+  }
+  if (!isDefault(characterSettings.bodyType)) {
+    fixedConstraintsLines.push(`Body Type: ${toBodyTypePhrase(characterSettings.gender as Gender, characterSettings.bodyType)}`);
+  }
+  if (!isDefault(characterSettings.ethnicity)) {
+    fixedConstraintsLines.push(`Ethnicity: ${characterSettings.ethnicity}`);
+  }
+  // Include hair color derived from selected presets if present
+  if (selectedPresets && selectedPresets.length) {
+    const hairColorDerived = deriveHairColor(selectedPresets);
+    if (hairColorDerived) {
+      fixedConstraintsLines.push(`Hair Color: ${hairColorDerived}`);
+    }
+  }
+  // Sexual attributes included only when NSFW mode is on
+  if (nsfwOn && !isDefault(characterSettings.breastSize)) {
+    fixedConstraintsLines.push(`Breast Size: ${toBreastPhrase(characterSettings.breastSize as BreastSize)}`);
+  }
+  if (!isDefault(characterSettings.hipsSize)) {
+    fixedConstraintsLines.push(`Hips Size: ${toHipsPhrase(characterSettings.hipsSize as HipsSize)}`);
+  }
+  if (!isDefault(characterSettings.buttSize)) {
+    fixedConstraintsLines.push(`Butt Size: ${toButtPhrase(characterSettings.buttSize as ButtSize)}`);
+  }
+  if (nsfwOn && !isDefault(characterSettings.penisSize)) {
+    fixedConstraintsLines.push(`Penis Size: ${toPenisPhrase(characterSettings.penisSize as PenisSize)}`);
+  }
+  if (!isDefault(characterSettings.muscleDefinition)) {
+    fixedConstraintsLines.push(`Muscle Definition: ${toMusclePhrase(characterSettings.muscleDefinition as MuscleDefinition)}`);
+  }
+  if (!isDefault(characterSettings.facialHair)) {
+    fixedConstraintsLines.push(`Facial Hair: ${toFacialHairPhrase(characterSettings.facialHair as FacialHair)}`);
+  }
+  if (!isDefault(characterSettings.characterStyle)) {
+    fixedConstraintsLines.push(`Character Style: ${characterSettings.characterStyle}`);
+  }
+  if (!isDefault(characterSettings.roleplay)) {
+    fixedConstraintsLines.push(`Roleplay: ${characterSettings.roleplay}`);
+  }
+  if (characterSettings.overlays) {
+    const overlayFlags: string[] = [];
+    if (characterSettings.overlays.furry) overlayFlags.push('Furry');
+    if (characterSettings.overlays.monster) overlayFlags.push('Monster');
+    if (characterSettings.overlays.sciFi) overlayFlags.push('SciFi');
+    if (overlayFlags.length) {
+      fixedConstraintsLines.push(`Overlays: ${overlayFlags.join(', ')}`);
+    }
+  }
+  if (!isDefault(styleFilter?.main)) {
+    const styleParts = [`Main: ${styleFilter.main}`];
+    if (!isDefault(styleFilter.sub)) styleParts.push(`Sub: ${styleFilter.sub}`);
+    fixedConstraintsLines.push(`Style Filter: ${styleParts.join(', ')}`);
+  }
+  const nsfwAllowed = nsfwSettings.mode === 'off' ? 'Not allowed' : 'Allowed';
+  fixedConstraintsLines.push(`NSFW: ${nsfwAllowed}`);
+
+  const fixedConstraintsBlock = [
+    '<fixed_constraints>',
+    ...fixedConstraintsLines,
+    '</fixed_constraints>'
+  ].join('\n');
+
+  console.log('[geminiService.generateRandomDescription/dup] fixedConstraintsLines=', fixedConstraintsLines);
+  console.log('[geminiService.generateRandomDescription/dup] fixedConstraintsBlock=\n' + fixedConstraintsBlock);
+  console.log('[geminiService.generateRandomDescription/dup] nsfwSettings.mode=', nsfwSettings.mode, 'nsfwLevel=', nsfwSettings.nsfwLevel, 'hardcoreLevel=', nsfwSettings.hardcoreLevel, 'selectedPresets=', selectedPresets);
+
+  const userContent = [
+    'You will generate a factual description of a character based on a set of fixed rules and randomized details.',
+    '',
+    "FIXED CONSTRAINTS: These are the character's non-negotiable attributes. You MUST use them exactly as provided. Use only qualitative descriptors. DO NOT include numeric measurements.",
+    fixedConstraintsBlock,
+    selectedPresets && selectedPresets.length ? `You MUST incorporate ALL of these presets/themes: ${selectedPresets.join(', ')}.` : '',
+    '',
+    'DICTION AND TONE RULES:',
+    'Objective Language Only: You are FORBIDDEN from using subjective or emotional adjectives. Do not use words like: beautiful, captivating, graceful, serene, enchanting, elegant, mysterious, alluring, dreamy, magical, stunning, breathtaking.',
+    'No Names or Personas: DO NOT invent a name for the character (e.g., Sarah, Lila). DO NOT assign a role or archetype (e.g., princess, muse).',
+    '',
+    'STRICT OUTPUT STRUCTURE: Generate a single paragraph. Describe the character\'s attributes in this precise order:',
+    'Start with core attributes like age, height, and build.',
+    'Then, hair color and style.',
+    'Then, facial features and eye color.',
+    'Then, specific body measurements from the constraints (if provided).',
+    'Then, clothing.',
+    'Finally, the location, pose, and lighting.',
+    '',
+    'CRUCIAL RULE: Your output must be a single paragraph of factual sentences. It must not be a list and it must not contain any of the forbidden subjective words.',
+    '',
+    'Now, generate a character description in English following all these rules.'
+  ].filter(Boolean).join('\n');
+
+  // Use existing GoogleGenAI pattern
+  const ai = new GoogleGenAI({ apiKey });
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: userContent,
+    config: {
+      systemInstruction,
+      responseMimeType: 'text/plain'
+    }
+  });
+
+  const text = getResponseTextOrThrow(response, 'random description generation');
+  let cleaned = cleanModelText(text).trim();
+  cleaned = normalizeNarrative(cleaned);
+  if (cleaned && cleaned.length > 5) {
+    return cleaned;
+  }
+  return 'The description focuses on the character and follows the required factual structure.';
+}
+
+
 
 export const generateImage = async (apiKey: string, prompt: string, resolution: '1k' | '2k', aspectRatio: string): Promise<string> => {
     const ai = new GoogleGenAI({ apiKey });

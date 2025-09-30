@@ -1,0 +1,195 @@
+Metadata-Version: 2.4
+Name: comfyui-promptbuilder-node
+Version: 1.0.0
+Summary: ComfyUI node for Prompt Builder with local LLM integration
+Author-email: Prompt Builder Team <contact@promptbuilder.ai>
+License: MIT
+Project-URL: Homepage, https://github.com/btitkin/promptbuilder
+Project-URL: Repository, https://github.com/btitkin/promptbuilder.git
+Project-URL: Issues, https://github.com/btitkin/promptbuilder/issues
+Project-URL: Documentation, https://github.com/btitkin/promptbuilder/wiki
+Keywords: comfyui,ai,prompt,llm,image-generation
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Multimedia :: Graphics
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests>=2.28.0
+Dynamic: license-file
+
+# Prompt Builder - Advanced AI Prompt Generation
+
+> **Professional-grade prompt generation for AI image creation with intelligent batch processing, anime styles, and advanced randomization**
+
+[![GitHub Stars](https://img.shields.io/github/stars/btitkin/promptbuilder?style=for-the-badge)](https://github.com/btitkin/promptbuilder/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/btitkin/promptbuilder?style=for-the-badge)](https://github.com/btitkin/promptbuilder/network/members)
+[![License](https://img.shields.io/github/license/btitkin/promptbuilder?style=for-the-badge)](https://github.com/btitkin/promptbuilder/blob/main/LICENSE)
+[![ComfyUI](https://img.shields.io/badge/ComfyUI-Compatible-brightgreen?style=for-the-badge)](https://github.com/comfyanonymous/ComfyUI)
+
+## Overview
+
+**Prompt Builder** is the most advanced AI prompt generation system available, designed for creators who demand professional results. Whether you're using the **Electron desktop application** or exploring the code in the **web dev server**, you get powerful features that transform simple descriptions into detailed, high-quality prompts.
+
+---
+
+## Choose Your Version
+
+### **Electron Desktop Application** (Recommended)
+> Privacy-focused, runs fully local with a built-in GGUF model loader
+
+- **Beautiful Interface** - Modern, responsive React-based UI
+- **Complete Privacy** - All processing happens locally on your machine
+- **Local LLM Integration** - Built-in GGUF support powered by node-llama-cpp (no external server required)
+- **Real-time Generation** - Instant prompt creation
+- **Advanced Character Builder** - Detailed customization
+- **20+ Anime Styles** - From Studio Ghibli to modern anime
+- **Intelligent Batch Processing** - Generate multiple prompts with smart randomization
+- **History & Favorites** - Save and manage prompts
+
+### **ComfyUI Integration** (comfyui-node branch)
+> Seamless integration with your ComfyUI workflows
+
+- **Native Integration** - Works directly in ComfyUI
+- **Workflow Ready** - Drag & drop nodes
+- **Batch Processing** - Generate prompts at scale
+- **Anime Styles** - 20+ specific anime art styles
+
+---
+
+## Core Features
+
+### **Intelligent AI Generation**
+- **Local LLM (GGUF) Support** - Run models locally via node-llama-cpp
+- **Online APIs** - Google Gemini supported out of the box (set GEMINI_API_KEY)
+- **Custom API (Optional)** - Bring your own OpenAI-compatible API via the Custom provider
+- **Smart Prompting** - Context-aware prompt enhancement
+
+### **Advanced Character Control**
+- **Physical Attributes** - Gender, age, body type, ethnicity
+- **Detailed Customization** - Height, build, female/male traits, overlays
+- **NSFW Support** - Three modes with granular control
+- **Preserved Traits** - Custom features that never change
+
+### **Professional Style System**
+- **Realistic Styles** - Professional, amateur, flash photography
+- **Anime Styles** - 20+ specific styles (Ghibli, Naruto, Bleach, etc.)
+- **Dynamic Selection** - Context-aware style options
+- **Quality Enhancement** - Automatic model-specific tags
+
+### **Intelligent Batch Processing**
+- **Smart Randomization** - Fixed vs. variable elements
+- **Batch Generation** - Multiple prompts with one click
+- **Character Consistency** - Same person, different scenarios
+- **Selective Variation** - Choose what randomizes
+
+---
+
+## Quick Start (Electron)
+
+### 1) Clone and Install
+```bash
+# Clone the repository
+git clone https://github.com/btitkin/promptbuilder.git
+cd promptbuilder
+
+# Install dependencies
+npm install
+```
+
+### 2) Add a Local GGUF Model
+The desktop app loads a local model file at runtime. By default it looks for:
+
+- models/Qwen2.5-7B-Instruct-Q4_K_M.gguf
+
+Steps:
+- Create a folder named `models/` in the project root (if it doesn't exist)
+- Download the GGUF file for your preferred instruct model
+- Save it as `Qwen2.5-7B-Instruct-Q4_K_M.gguf` inside the `models/` folder
+- Alternatively, update the filename in `main.js` if you want to use a different model name
+
+Notes:
+- GPU acceleration is enabled by default (gpuLayers: 'max') in the Electron app
+- On first run, the app verifies the model exists and logs helpful errors if not
+
+### 3) Start the App
+```bash
+# Start Vite + Electron together
+npm run electron:dev
+```
+- If port 5173 is busy, the dev server may use 5174 automatically. The Electron app now falls back to 5174.
+
+### 4) Providers and API Keys
+- Local model: choose the "Local" or "custom_local" provider in the UI (Electron only)
+- Google Gemini: set your API key in a `.env` file in the project root:
+```bash
+GEMINI_API_KEY=your_api_key_here
+```
+
+---
+
+## Build and Distribution
+
+### Desktop Application (Electron)
+```bash
+# Build Electron app for your platform
+npm run build:electron
+
+# Or produce installers/portable builds (no publish)
+npm run dist
+```
+The Electron build bundles your `models/` folder into the app’s resources automatically.
+
+### Web Dev Server (for UI development only)
+```bash
+# Run the UI in a browser (local LLM disabled in browser)
+npm run dev
+```
+- When running only the Vite dev server in a browser, the local LLM is not available (Electron bridge is required). Use Gemini or a custom API provider instead.
+
+---
+
+## Scripts
+These are the most relevant scripts from package.json:
+
+- `npm run dev` — Start Vite dev server (UI only; no local LLM)
+- `npm run electron` — Launch Electron using the last build artifacts
+- `npm run electron:dev` — Start Vite and Electron together for development
+- `npm run build` — Build the web assets (dist)
+- `npm run build:electron` — Build Electron app via electron-builder
+- `npm run dist` — Build installers/portable distributions
+- `npm test` — Run unit tests (vitest)
+
+---
+
+## Troubleshooting
+
+- Electron API is not available
+  - You opened the UI in a regular browser (npm run dev). Use `npm run electron:dev` instead.
+
+- Model file not found or too small
+  - Make sure `models/Qwen2.5-7B-Instruct-Q4_K_M.gguf` exists and is a valid GGUF file
+  - You can change the expected filename in `main.js`
+
+- Dev server on port 5173 is busy
+  - Vite may switch to 5174 automatically; the Electron app now falls back to 5174
+
+- Gemini returns an auth error
+  - Ensure `GEMINI_API_KEY` is set in a `.env` file at the project root
+
+---
+
+## ComfyUI Integration (Alternative)
+For ComfyUI users, switch to the `comfyui-node` branch and follow the installation steps using the ComfyUI Manager or manual setup. This repository includes Python components and nodes tailored for ComfyUI workflows.
+
+---
+
+## License
+MIT License. See LICENSE for details.

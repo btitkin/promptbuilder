@@ -1,0 +1,327 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - img [ref=e7]:
+        - generic [ref=e16]: PromptBuilder
+      - tooltip "Prompt Builder intelligently transforms your simple descriptions into perfectly structured, model-specific prompts. It handles complex syntax, BREAK statements, and content rules, saving you time and maximizing the quality of your results." [ref=e17]:
+        - img [ref=e19]
+        - generic: Prompt Builder intelligently transforms your simple descriptions into perfectly structured, model-specific prompts. It handles complex syntax, BREAK statements, and content rules, saving you time and maximizing the quality of your results.
+    - paragraph [ref=e21]: Transform simple ideas into perfectly structured AI prompts.
+    - link "You need image to prompt? Click here and then come back!" [ref=e22] [cursor=pointer]:
+      - /url: https://huggingface.co/spaces/ovi054/image-to-prompt
+  - main [ref=e23]:
+    - button "How to Use Prompt Builder" [ref=e25] [cursor=pointer]:
+      - heading "How to Use Prompt Builder" [level=3] [ref=e26] [cursor=pointer]
+      - img [ref=e27] [cursor=pointer]
+    - button "API Settings" [ref=e30] [cursor=pointer]:
+      - heading "API Settings" [level=3] [ref=e31] [cursor=pointer]
+      - img [ref=e32] [cursor=pointer]
+    - button "Manage Settings Export all your current settings (except Api keys) to a Json file to save or share. You can import a settings file to load a configuration." [ref=e35] [cursor=pointer]:
+      - generic [ref=e36] [cursor=pointer]:
+        - heading "Manage Settings" [level=3] [ref=e37] [cursor=pointer]
+        - tooltip "Export all your current settings (except Api keys) to a Json file to save or share. You can import a settings file to load a configuration." [ref=e38] [cursor=pointer]:
+          - img [ref=e40] [cursor=pointer]
+          - generic: Export all your current settings (except Api keys) to a Json file to save or share. You can import a settings file to load a configuration.
+      - img [ref=e42] [cursor=pointer]
+    - generic [ref=e44]:
+      - generic [ref=e46]:
+        - generic [ref=e47]: AI Model
+        - combobox "AI Model" [ref=e48]:
+          - option "Google Imagen4"
+          - option "SDXL"
+          - option "SD 1.5"
+          - option "Flux"
+          - option "Pony"
+          - option "Illustrious"
+          - option "OpenAI"
+          - option "MidJourney" [selected]
+          - option "Stable Cascade"
+          - option "Nano Banana"
+          - option "Qwen"
+          - option "AuraFlow"
+          - option "HiDream"
+          - option "Kolors"
+          - option "Lumina"
+          - option "Mochi"
+          - option "NoobAI"
+          - option "PixArt A/E"
+          - option "Veo 3"
+          - option "SVD"
+          - option "CogVideoX"
+          - option "Hunyuan Video"
+          - option "LTXV"
+          - option "Wan Video"
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - generic [ref=e52]: BREAK
+          - generic [ref=e53]:
+            - switch "BREAK" [disabled] [ref=e54]
+            - generic [ref=e55]: "Off"
+        - generic [ref=e56]:
+          - generic [ref=e58]: Advanced Settings
+          - generic [ref=e59]:
+            - switch "Advanced Settings" [checked] [ref=e60] [cursor=pointer]
+            - generic [ref=e61]: "On"
+    - generic [ref=e62]:
+      - heading "Supported Models:" [level=3] [ref=e63]
+      - generic [ref=e64]: Google Imagen4, SDXL, SD 1.5, Flux, Pony, Illustrious, OpenAI, Midjourney, Stable Cascade, Nano Banana, Gwen, AuraFlow, HiDream, Kolors, Lumina, Mochi, NoobAI, PixArt A/E, Veo 3, SVD, CogVideoX, Hunyuan Video, LTXV, Wan Video
+    - generic [ref=e65]:
+      - generic [ref=e66]:
+        - heading "Style Filter" [level=3] [ref=e67]
+        - tooltip "Guides the Ai to generate prompts tailored for either photorealistic images or anime/manga styles." [ref=e68]:
+          - img [ref=e70]
+          - generic: Guides the Ai to generate prompts tailored for either photorealistic images or anime/manga styles.
+      - generic [ref=e72]:
+        - button "Realistic" [ref=e73] [cursor=pointer]
+        - button "Anime" [ref=e74] [cursor=pointer]
+    - button "Reset All Selected" [ref=e76] [cursor=pointer]:
+      - img [ref=e77] [cursor=pointer]
+      - text: Reset All Selected
+    - button "Content Rules Configure content filtering and safety settings for generated images." [ref=e81] [cursor=pointer]:
+      - generic [ref=e82] [cursor=pointer]:
+        - img [ref=e83] [cursor=pointer]
+        - heading "Content Rules" [level=3] [ref=e85] [cursor=pointer]
+        - tooltip "Configure content filtering and safety settings for generated images." [ref=e86] [cursor=pointer]:
+          - img [ref=e88] [cursor=pointer]
+          - generic: Configure content filtering and safety settings for generated images.
+      - img [ref=e90] [cursor=pointer]
+    - button "Character Settings Specify detailed physical attributes for the primary subject. 'Any' gives the Ai creative freedom." [ref=e93] [cursor=pointer]:
+      - generic [ref=e94] [cursor=pointer]:
+        - img [ref=e95] [cursor=pointer]
+        - heading "Character Settings" [level=3] [ref=e98] [cursor=pointer]
+        - tooltip "Specify detailed physical attributes for the primary subject. 'Any' gives the Ai creative freedom." [ref=e99] [cursor=pointer]:
+          - img [ref=e101] [cursor=pointer]
+          - generic: Specify detailed physical attributes for the primary subject. 'Any' gives the Ai creative freedom.
+      - img [ref=e103] [cursor=pointer]
+    - button "Shot Presets Control lighting, camera angles, and atmosphere to set the mood and visual style of your image." [ref=e106] [cursor=pointer]:
+      - generic [ref=e107] [cursor=pointer]:
+        - img [ref=e108] [cursor=pointer]
+        - heading "Shot Presets" [level=3] [ref=e111] [cursor=pointer]
+        - tooltip "Control lighting, camera angles, and atmosphere to set the mood and visual style of your image." [ref=e112] [cursor=pointer]:
+          - img [ref=e114] [cursor=pointer]
+          - generic: Control lighting, camera angles, and atmosphere to set the mood and visual style of your image.
+      - img [ref=e116] [cursor=pointer]
+    - button "Pose Presets Choose from various pose categories to define character positioning and body language in your image." [ref=e119] [cursor=pointer]:
+      - generic [ref=e120] [cursor=pointer]:
+        - img [ref=e121] [cursor=pointer]
+        - heading "Pose Presets" [level=3] [ref=e126] [cursor=pointer]
+        - tooltip "Choose from various pose categories to define character positioning and body language in your image." [ref=e127] [cursor=pointer]:
+          - img [ref=e129] [cursor=pointer]
+          - generic: Choose from various pose categories to define character positioning and body language in your image.
+      - img [ref=e131] [cursor=pointer]
+    - button "Location Presets Choose from indoor, outdoor, or nsfw location settings to set the scene for your image" [ref=e134] [cursor=pointer]:
+      - generic [ref=e135] [cursor=pointer]:
+        - img [ref=e136] [cursor=pointer]
+        - heading "Location Presets" [level=3] [ref=e139] [cursor=pointer]
+        - tooltip "Choose from indoor, outdoor, or nsfw location settings to set the scene for your image" [ref=e140] [cursor=pointer]:
+          - img [ref=e142] [cursor=pointer]
+          - generic: Choose from indoor, outdoor, or nsfw location settings to set the scene for your image
+      - img [ref=e144] [cursor=pointer]
+    - button "Clothing Presets Select clothing and accessories for your character from Sfw, Nsfw, or hardcore categories" [ref=e147] [cursor=pointer]:
+      - generic [ref=e148] [cursor=pointer]:
+        - img [ref=e149] [cursor=pointer]
+        - heading "Clothing Presets" [level=3] [ref=e151] [cursor=pointer]
+        - tooltip "Select clothing and accessories for your character from Sfw, Nsfw, or hardcore categories" [ref=e152] [cursor=pointer]:
+          - img [ref=e154] [cursor=pointer]
+          - generic: Select clothing and accessories for your character from Sfw, Nsfw, or hardcore categories
+      - img [ref=e156] [cursor=pointer]
+    - button "Hair Presets Select hairstyles and hair colors for your character. Choose from female styles, male styles, or hair colors." [ref=e159] [cursor=pointer]:
+      - generic [ref=e160] [cursor=pointer]:
+        - img [ref=e161] [cursor=pointer]
+        - heading "Hair Presets" [level=3] [ref=e167] [cursor=pointer]
+        - tooltip "Select hairstyles and hair colors for your character. Choose from female styles, male styles, or hair colors." [ref=e168] [cursor=pointer]:
+          - img [ref=e170] [cursor=pointer]
+          - generic: Select hairstyles and hair colors for your character. Choose from female styles, male styles, or hair colors.
+      - img [ref=e172] [cursor=pointer]
+    - button "Style Presets Choose visual styles to influence the overall aesthetic of your generated images. Realistic styles mimic photography, anime styles emulate Japanese animation, and artistic styles apply various art techniques." [ref=e175] [cursor=pointer]:
+      - generic [ref=e176] [cursor=pointer]:
+        - img [ref=e177] [cursor=pointer]
+        - heading "Style Presets" [level=3] [ref=e181] [cursor=pointer]
+        - tooltip "Choose visual styles to influence the overall aesthetic of your generated images. Realistic styles mimic photography, anime styles emulate Japanese animation, and artistic styles apply various art techniques." [ref=e182] [cursor=pointer]:
+          - img [ref=e184] [cursor=pointer]
+          - generic: Choose visual styles to influence the overall aesthetic of your generated images. Realistic styles mimic photography, anime styles emulate Japanese animation, and artistic styles apply various art techniques.
+      - img [ref=e186] [cursor=pointer]
+    - button "Character Style Presets Choose character style aesthetics and subcultures to influence the overall look and personality of your character." [ref=e189] [cursor=pointer]:
+      - generic [ref=e190] [cursor=pointer]:
+        - img [ref=e191] [cursor=pointer]
+        - heading "Character Style Presets" [level=3] [ref=e197] [cursor=pointer]
+        - tooltip "Choose character style aesthetics and subcultures to influence the overall look and personality of your character." [ref=e198] [cursor=pointer]:
+          - img [ref=e200] [cursor=pointer]
+          - generic: Choose character style aesthetics and subcultures to influence the overall look and personality of your character.
+      - img [ref=e203] [cursor=pointer]
+    - button "Roleplay Presets Define character relationships and dynamics for roleplay scenarios" [ref=e206] [cursor=pointer]:
+      - generic [ref=e207] [cursor=pointer]:
+        - img [ref=e208] [cursor=pointer]
+        - heading "Roleplay Presets" [level=3] [ref=e217] [cursor=pointer]
+        - tooltip "Define character relationships and dynamics for roleplay scenarios" [ref=e218] [cursor=pointer]:
+          - img [ref=e220] [cursor=pointer]
+          - generic: Define character relationships and dynamics for roleplay scenarios
+      - img [ref=e222] [cursor=pointer]
+    - button "Physical Features Add detailed physical characteristics including skin features, body markings, piercings, muscle definition, and body hair." [ref=e225] [cursor=pointer]:
+      - generic [ref=e226] [cursor=pointer]:
+        - img [ref=e227] [cursor=pointer]
+        - heading "Physical Features" [level=3] [ref=e230] [cursor=pointer]
+        - tooltip "Add detailed physical characteristics including skin features, body markings, piercings, muscle definition, and body hair." [ref=e231] [cursor=pointer]:
+          - img [ref=e233] [cursor=pointer]
+          - generic: Add detailed physical characteristics including skin features, body markings, piercings, muscle definition, and body hair.
+      - img [ref=e235] [cursor=pointer]
+    - button "Facial Expressions Choose from a wide range of facial expressions to convey emotion and personality in your character." [ref=e238] [cursor=pointer]:
+      - generic [ref=e239] [cursor=pointer]:
+        - img [ref=e240] [cursor=pointer]
+        - heading "Facial Expressions" [level=3] [ref=e243] [cursor=pointer]
+        - tooltip "Choose from a wide range of facial expressions to convey emotion and personality in your character." [ref=e244] [cursor=pointer]:
+          - img [ref=e246] [cursor=pointer]
+          - generic: Choose from a wide range of facial expressions to convey emotion and personality in your character.
+      - img [ref=e248] [cursor=pointer]
+    - button "Emotional States Add emotional depth with physical reactions, eye expressions, and various emotional states from vulnerable to confident." [ref=e251] [cursor=pointer]:
+      - generic [ref=e252] [cursor=pointer]:
+        - img [ref=e253] [cursor=pointer]
+        - heading "Emotional States" [level=3] [ref=e255] [cursor=pointer]
+        - tooltip "Add emotional depth with physical reactions, eye expressions, and various emotional states from vulnerable to confident." [ref=e256] [cursor=pointer]:
+          - img [ref=e258] [cursor=pointer]
+          - generic: Add emotional depth with physical reactions, eye expressions, and various emotional states from vulnerable to confident.
+      - img [ref=e260] [cursor=pointer]
+    - button "Fantasy Races Transform characters into fantasy races and mythical beings from various mythologies and fictional universes." [ref=e263] [cursor=pointer]:
+      - generic [ref=e264] [cursor=pointer]:
+        - img [ref=e265] [cursor=pointer]
+        - heading "Fantasy Races" [level=3] [ref=e268] [cursor=pointer]
+        - tooltip "Transform characters into fantasy races and mythical beings from various mythologies and fictional universes." [ref=e269] [cursor=pointer]:
+          - img [ref=e271] [cursor=pointer]
+          - generic: Transform characters into fantasy races and mythical beings from various mythologies and fictional universes.
+      - img [ref=e273] [cursor=pointer]
+    - button "Creatures Add various creature types from anthro/furry to aliens, monsters, and mythical beings for diverse character creation." [ref=e276] [cursor=pointer]:
+      - generic [ref=e277] [cursor=pointer]:
+        - img [ref=e278] [cursor=pointer]
+        - heading "Creatures" [level=3] [ref=e280] [cursor=pointer]
+        - tooltip "Add various creature types from anthro/furry to aliens, monsters, and mythical beings for diverse character creation." [ref=e281] [cursor=pointer]:
+          - img [ref=e283] [cursor=pointer]
+          - generic: Add various creature types from anthro/furry to aliens, monsters, and mythical beings for diverse character creation.
+      - img [ref=e285] [cursor=pointer]
+    - button "Props Add various props and accessories to enhance scenes with jewelry, handheld items, weapons, instruments, and more." [ref=e288] [cursor=pointer]:
+      - generic [ref=e289] [cursor=pointer]:
+        - img [ref=e290] [cursor=pointer]
+        - heading "Props" [level=3] [ref=e294] [cursor=pointer]
+        - tooltip "Add various props and accessories to enhance scenes with jewelry, handheld items, weapons, instruments, and more." [ref=e295] [cursor=pointer]:
+          - img [ref=e297] [cursor=pointer]
+          - generic: Add various props and accessories to enhance scenes with jewelry, handheld items, weapons, instruments, and more.
+      - img [ref=e299] [cursor=pointer]
+    - button "Time of Day Set the time and atmospheric conditions to create the perfect lighting and mood for your scene." [ref=e302] [cursor=pointer]:
+      - generic [ref=e303] [cursor=pointer]:
+        - img [ref=e304] [cursor=pointer]
+        - heading "Time of Day" [level=3] [ref=e307] [cursor=pointer]
+        - tooltip "Set the time and atmospheric conditions to create the perfect lighting and mood for your scene." [ref=e308] [cursor=pointer]:
+          - img [ref=e310] [cursor=pointer]
+          - generic: Set the time and atmospheric conditions to create the perfect lighting and mood for your scene.
+      - img [ref=e312] [cursor=pointer]
+    - button "Special Effects Add cinematic lighting, magical effects, and technical photography effects to enhance your image." [ref=e315] [cursor=pointer]:
+      - generic [ref=e316] [cursor=pointer]:
+        - img [ref=e317] [cursor=pointer]
+        - heading "Special Effects" [level=3] [ref=e320] [cursor=pointer]
+        - tooltip "Add cinematic lighting, magical effects, and technical photography effects to enhance your image." [ref=e321] [cursor=pointer]:
+          - img [ref=e323] [cursor=pointer]
+          - generic: Add cinematic lighting, magical effects, and technical photography effects to enhance your image.
+      - img [ref=e325] [cursor=pointer]
+    - button "Atmospheric Add atmospheric effects like fog, mist, smoke, and weather conditions to create mood and depth." [ref=e328] [cursor=pointer]:
+      - generic [ref=e329] [cursor=pointer]:
+        - img [ref=e330] [cursor=pointer]
+        - heading "Atmospheric" [level=3] [ref=e332] [cursor=pointer]
+        - tooltip "Add atmospheric effects like fog, mist, smoke, and weather conditions to create mood and depth." [ref=e333] [cursor=pointer]:
+          - img [ref=e335] [cursor=pointer]
+          - generic: Add atmospheric effects like fog, mist, smoke, and weather conditions to create mood and depth.
+      - img [ref=e337] [cursor=pointer]
+    - generic [ref=e339]:
+      - heading "Advanced Settings" [level=3] [ref=e340]
+      - generic [ref=e341]:
+        - generic [ref=e342]:
+          - generic [ref=e343]: Negative Prompt
+          - tooltip "Specify terms to exclude from the image. Useful for removing common artifacts like 'blurry' or 'bad anatomy'." [ref=e344]:
+            - img [ref=e346]
+            - generic: Specify terms to exclude from the image. Useful for removing common artifacts like 'blurry' or 'bad anatomy'.
+        - textbox "Negative Prompt" [ref=e348]: blurry, ugly
+      - generic [ref=e349]:
+        - generic [ref=e350]:
+          - generic [ref=e351]:
+            - generic [ref=e352]: Aspect Ratio
+            - tooltip "Set the desired width-to-height ratio of the final image. Support varies by model." [ref=e353]:
+              - img [ref=e355]
+              - generic: Set the desired width-to-height ratio of the final image. Support varies by model.
+          - combobox "Aspect Ratio" [ref=e357]:
+            - option "1:1"
+            - option "16:9" [selected]
+            - option "9:16"
+            - option "4:3"
+            - option "3:4"
+            - option "none"
+        - generic [ref=e358]:
+          - generic [ref=e359]:
+            - generic [ref=e360]: Seed
+            - tooltip "A specific number that initializes the image generation. Using the same seed with the same prompt will produce a similar image." [ref=e361]:
+              - img [ref=e363]
+              - generic: A specific number that initializes the image generation. Using the same seed with the same prompt will produce a similar image.
+          - spinbutton "Seed" [ref=e365]: "12345"
+      - generic [ref=e366]:
+        - generic [ref=e367]:
+          - generic [ref=e368]: Additional Parameters
+          - tooltip "Add any other model-specific parameters, like '--style raw' or '--chaos 10'. Ensure the syntax is correct for the selected model." [ref=e369]:
+            - img [ref=e371]
+            - generic: Add any other model-specific parameters, like '--style raw' or '--chaos 10'. Ensure the syntax is correct for the selected model.
+        - textbox "Additional Parameters" [ref=e373]: "--style raw --chaos 10 4:3"
+    - generic [ref=e374]:
+      - generic [ref=e375]:
+        - generic [ref=e376]: Enter your simple description
+        - generic [ref=e377]:
+          - button "(+)" [ref=e378] [cursor=pointer]:
+            - generic [ref=e379] [cursor=pointer]: (+)
+          - button "[-]" [ref=e380] [cursor=pointer]:
+            - generic [ref=e381] [cursor=pointer]: "[-]"
+          - button "Save selected text (or full prompt) as a reusable snippet" [ref=e382] [cursor=pointer]:
+            - img [ref=e383] [cursor=pointer]
+          - button "Lock selected text to preserve it in Enhance/Random" [ref=e385] [cursor=pointer]:
+            - img [ref=e386] [cursor=pointer]
+          - button "Random" [ref=e390] [cursor=pointer]:
+            - img [ref=e391] [cursor=pointer]
+            - text: Random
+          - button "Enhance" [ref=e393] [cursor=pointer]:
+            - img [ref=e394] [cursor=pointer]
+            - text: Enhance
+      - textbox "Enter your simple description" [ref=e397]: A majestic dragon flying over a medieval castle at sunset
+      - button "Generate Prompt" [ref=e398] [cursor=pointer]
+    - generic [ref=e399]:
+      - generic [ref=e400]: Generated Prompts
+      - generic [ref=e401]:
+        - generic [ref=e402]:
+          - heading "Variation 1" [level=4] [ref=e403]
+          - textbox "Prompt variation 1" [ref=e404]
+          - generic [ref=e405]:
+            - button "Generate image for variation 1" [disabled] [ref=e407]:
+              - img [ref=e408]
+            - button "Share variation 1" [ref=e410] [cursor=pointer]:
+              - img [ref=e411] [cursor=pointer]
+            - button "Copy variation 1" [ref=e413] [cursor=pointer]:
+              - img [ref=e414] [cursor=pointer]
+        - generic [ref=e416]:
+          - heading "Negative Prompt" [level=4] [ref=e417]
+          - textbox "Negative prompt" [ref=e418]
+          - button "Copy negative prompt" [ref=e420] [cursor=pointer]:
+            - img [ref=e421] [cursor=pointer]
+    - generic [ref=e424]:
+      - generic [ref=e425]:
+        - heading "Image Generation" [level=3] [ref=e426]
+        - tooltip "This feature is only available when using the Google Gemini or OpenAi Api." [ref=e427]:
+          - img [ref=e429]
+          - generic: This feature is only available when using the Google Gemini or OpenAi Api.
+      - img [ref=e431]
+    - generic [ref=e433]:
+      - generic [ref=e434]:
+        - heading "History" [level=3] [ref=e435]
+        - button "Clear history" [ref=e436] [cursor=pointer]:
+          - img [ref=e437] [cursor=pointer]
+          - text: Clear
+      - list [ref=e440]:
+        - listitem [ref=e441]:
+          - button "A majestic dragon flying over a medieval castle at sunset" [ref=e442] [cursor=pointer]:
+            - paragraph [ref=e443] [cursor=pointer]: A majestic dragon flying over a medieval castle at sunset
+```

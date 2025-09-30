@@ -3,6 +3,152 @@ import requests
 import re
 from typing import Dict, Any, List, Tuple, Optional
 import random
+import os
+
+# ========================= Tags Database Loading =========================
+def load_tags_database() -> Dict[str, Any]:
+    """
+    Load the tags database from tags_db.json for LLM reference
+    """
+    try:
+        # Get the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        tags_db_path = os.path.join(script_dir, 'tags_db.json')
+        
+        with open(tags_db_path, 'r', encoding='utf-8') as f:
+            tags_db = json.load(f)
+        return tags_db
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"Warning: Could not load tags_db.json: {e}")
+        return {}
+
+# Load tags database once at module level
+TAGS_DB = load_tags_database()
+
+# ========================= Advanced JSON Parsing Functions =========================
+def parse_llama_json_response(text: str) -> Optional[Dict[str, Any]]:
+    """
+    Advanced JSON parsing with multiple fallback strategies for LLM responses
+    """
+    if not text or not isinstance(text, str):
+        return None
+    
+    cleaned_text = text.strip()
+    
+    # Strategy 1: Try direct JSON parsing
+    try:
+        parsed = json.loads(cleaned_text)
+        if parsed and isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+    
+    # Strategy 2: Extract JSON from code blocks or markdown
+    import re
+    json_block_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', cleaned_text)
+    if json_block_match:
+        try:
+            parsed = json.loads(json_block_match.group(1).strip())
+            if parsed and isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+    
+    # Strategy 3: Find the first valid JSON object in the text
+    json_object_match = re.search(r'\{[\s\S]*?\}(?=\s*$|\s*[^\s\w\d\{\}\[\]"\',])', cleaned_text)
+    if json_object_match:
+        try:
+            # Clean common JSON formatting issues
+            json_str = json_object_match.group(0)
+            json_str = re.sub(r',\s*\}', '}', json_str)
+            json_str = re.sub(r',\s*\]', ']', json_str)
+            json_str = re.sub(r"'", '"', json_str)
+            json_str = re.sub(r'\n', ' ', json_str)
+            json_str = re.sub(r'\s+', ' ', json_str)
+            
+            parsed = json.loads(json_str)
+            if parsed and isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+    
+    # Strategy 4: Try to parse as array of objects
+    json_array_match = re.search(r'\[[\s\S]*?\]', cleaned_text)
+    if json_array_match:
+        try:
+            parsed = json.loads(json_array_match.group(0))
+            if isinstance(parsed, list):
+                return {"structuredPrompts": parsed}
+        except json.JSONDecodeError:
+            pass
+    
+    # Strategy 5: Try to find and fix common JSON syntax errors
+    potential_json_match = re.search(r'\{[\s\S]{20,1000}\}', cleaned_text)
+    if potential_json_match:
+        try:
+            fixed_json = potential_json_match.group(0)
+            # Fix missing quotes around keys
+            fixed_json = re.sub(r'([\{\,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', fixed_json)
+            # Fix single quotes
+            fixed_json = re.sub(r"'", '"', fixed_json)
+            # Fix trailing commas
+            fixed_json = re.sub(r',\s*\}', '}', fixed_json)
+            fixed_json = re.sub(r',\s*\]', ']', fixed_json)
+            
+            parsed = json.loads(fixed_json)
+            if parsed and isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+    
+    return None
+
+# Character constraint functions for local model
+def get_body_type_description(gender: str, body_type: str) -> str:
+    if gender == 'female':
+        if body_type == 'slim': return 'The subject must have a slim build, slender figure, and petite frame.'
+        if body_type == 'curvy': return 'The subject must have a curvy figure with an hourglass shape, wide hips, and a voluptuous body.'
+        if body_type == 'athletic': return 'The subject must have an athletic build with a toned body, defined muscles, and a fit physique.'
+        if body_type == 'instagram model': return 'The subject must have an "instagram model" physique: a slim-thick, surgically enhanced look with an exaggerated hourglass figure and an impossibly small waist.'
+    elif gender == 'male':
+        if body_type == 'slim': return 'The subject must have a slim build, a lean physique, and a slender frame.'
+        if body_type == 'fat': return 'The subject must have a heavy-set, plus-size male build, such as a "dad bod" or a chubby, overweight frame with a large belly.'
+        if body_type == 'muscular': return 'The subject must have a muscular, athletic body with toned muscles and a well-defined physique (like a movie star).'
+        if body_type == 'big muscular': return 'The subject must have a hypermuscular bodybuilder physique with huge, massive, bulging muscles.'
+    return ''
+
+def get_ethnicity_description(ethnicity: str) -> str:
+    if ethnicity == 'any': return ''
+    return f"The subject's ethnicity MUST be {ethnicity}. This is a strict, non-negotiable requirement."
+
+def get_height_description(height: str) -> str:
+    if height == 'any': return ''
+    description = height.replace('\s*\(.+\\)', '')
+    return f"The subject's height MUST be in the '{description}' range. For reference: {height}. This is a strict physical trait."
+
+def get_breast_size_description(size: str) -> str:
+    if size == 'any': return ''
+    return f"As a key physical attribute, the female subject MUST have {size} breasts. This is a strict requirement."
+
+def get_hips_size_description(size: str) -> str:
+    if size == 'any': return ''
+    return f"The female subject is required to have {size} hips. This is a defining characteristic and must be depicted."
+
+def get_butt_size_description(size: str) -> str:
+    if size == 'any': return ''
+    return f"The female subject's butt MUST be {size}. Adhere strictly to this physical trait."
+
+def get_penis_size_description(size: str) -> str:
+    if size == 'any': return ''
+    return f"The male subject MUST be depicted with a {size} penis. This is a non-negotiable anatomical detail."
+
+def get_muscle_definition_description(muscle_def: str) -> str:
+    if muscle_def == 'any': return ''
+    return f"The male subject's musculature must be depicted as '{muscle_def}'. This is a key part of their physique."
+
+def get_facial_hair_description(hair: str) -> str:
+    if hair == 'any': return ''
+    return f"The male subject MUST have facial hair described as: {hair}. This is a strict visual requirement."
 
 class PromptBuilderLocalNode:
     """
@@ -124,7 +270,7 @@ class PromptBuilderLocalNode:
                 "ethnicity": (["any", "caucasian", "european", "scandinavian", "slavic", "mediterranean", "asian", "japanese", "chinese", "korean", "indian", "african", "hispanic", "middle eastern", "native american"], {
                     "default": "any"
                 }),
-                "height_range": (["any", "very short (<150cm)", "short (150-165cm)", "average (165-180cm)", "tall (>180cm)"], {
+                "height_range": (["any", "very short", "short", "average", "tall"], {
                     "default": "any"
                 }),
                 
@@ -423,7 +569,7 @@ class PromptBuilderLocalNode:
         # Random height if enabled
         height_range = kwargs.get('height_range', 'any')
         if kwargs.get('enable_random_generation') and height_range == 'any':
-            height_range = random.choice(['short (150-165cm)', 'average (165-180cm)', 'tall (>180cm)'])
+            height_range = random.choice(['short', 'average', 'tall'])
         
         if height_range and height_range != 'any':
             parts.append(height_range)
@@ -468,7 +614,77 @@ class PromptBuilderLocalNode:
                 if penis_size and penis_size != 'any':
                     parts.append(f"{penis_size} penis")
         
-        return ', '.join(parts) if parts else ''
+        # Add scene type context
+        scene_type = kwargs.get('scene_type', 'solo')
+        if scene_type and scene_type != 'solo':
+            if scene_type == 'couple':
+                parts.append("in a couple scene")
+            elif scene_type == 'threesome':
+                parts.append("in a threesome scene")
+            elif scene_type == 'group':
+                parts.append("in a group scene")
+        
+        # Add character style
+        character_style = kwargs.get('character_style', 'any')
+        if character_style and character_style != 'any':
+            if character_style == 'realistic':
+                parts.append("realistic style")
+            elif character_style == 'anime':
+                parts.append("anime style")
+            elif character_style == 'fantasy':
+                parts.append("fantasy style")
+            elif character_style == 'cyberpunk':
+                parts.append("cyberpunk style")
+            elif character_style == 'gothic':
+                parts.append("gothic style")
+            elif character_style == 'vintage':
+                parts.append("vintage style")
+        
+        # Add roleplay context
+        roleplay = kwargs.get('roleplay', 'none')
+        if roleplay and roleplay != 'none':
+            if roleplay == 'teacher_student':
+                parts.append("teacher-student roleplay")
+            elif roleplay == 'boss_employee':
+                parts.append("boss-employee roleplay")
+            elif roleplay == 'doctor_patient':
+                parts.append("doctor-patient roleplay")
+            elif roleplay == 'photographer_model':
+                parts.append("photographer-model roleplay")
+            elif roleplay == 'massage_therapist':
+                parts.append("massage therapist roleplay")
+            elif roleplay == 'personal_trainer':
+                parts.append("personal trainer roleplay")
+            elif roleplay == 'roommates':
+                parts.append("roommates roleplay")
+            elif roleplay == 'neighbors':
+                parts.append("neighbors roleplay")
+            elif roleplay == 'strangers':
+                parts.append("strangers roleplay")
+            elif roleplay == 'friends_with_benefits':
+                parts.append("friends with benefits roleplay")
+        
+        # Start with appropriate article based on gender and scene type
+        if parts:
+            description = ', '.join(parts)
+            if scene_type == 'solo':
+                if gender == 'female':
+                    return f"the woman, {description}"
+                elif gender == 'male':
+                    return f"the man, {description}"
+                else:
+                    return f"the person, {description}"
+            else:
+                # For multi-person scenes, adjust the description
+                if gender == 'mixed' or scene_type in ['couple', 'threesome', 'group']:
+                    return f"the people, {description}"
+                elif gender == 'female':
+                    return f"the women, {description}"
+                elif gender == 'male':
+                    return f"the men, {description}"
+                else:
+                    return f"the people, {description}"
+        return ''
     
     def apply_presets(self, preset_string: str, preset_dict: Dict[str, str]) -> List[str]:
         """
@@ -494,9 +710,19 @@ class PromptBuilderLocalNode:
         anime_style = kwargs.get('anime_style', 'ghibli') if style_main == 'anime' else None
         
         style_guidance = {
-            "realistic": "Focus on photorealistic, detailed descriptions. Include lighting, composition, and technical photography terms.",
+            "realistic": "Focus on photorealistic, detailed descriptions. Include professional photography terms like depth of field, bokeh, natural lighting, studio lighting, three-point lighting, 85mm f/1.8 lens, high dynamic range, sharp focus, shallow depth of field, golden hour lighting, blue hour, rim lighting, backlighting, side lighting, soft shadows, harsh shadows, overcast lighting, direct flash, bounce flash, fill light, key light, hair light, catchlights in eyes, lens flare, chromatic aberration, film grain, noise reduction, high ISO, low ISO, fast shutter speed, slow shutter speed, motion blur, image stabilization, white balance, color temperature, saturation, contrast, vibrancy, clarity, dehaze, vignetting, perspective distortion, focal length, aperture, f-stop, exposure compensation, metering mode, center-weighted, spot metering, evaluative metering, histogram, dynamic range, highlight recovery, shadow detail, black point, white point, midtones, curves adjustment, levels adjustment, color grading, split toning, HSL adjustments, sharpening, noise reduction, lens correction, profile correction, distortion correction, chromatic aberration correction, vignette correction, perspective correction, crop factor, full frame, APS-C, medium format, large format, prime lens, zoom lens, telephoto lens, wide-angle lens, fisheye lens, macro lens, tilt-shift lens, image sensor, CMOS, CCD, Bayer filter, anti-aliasing filter, low-pass filter, optical low-pass filter, image processor, RAW format, JPEG compression, lossless compression, bit depth, color space, sRGB, Adobe RGB, ProPhoto RGB, gamut, color management, ICC profile, monitor calibration, printer calibration, soft proofing, hard proofing, print resolution, DPI, PPI, interpolation, resampling, upscaling, downscaling, aliasing, moiré, compression artifacts, banding, posterization, dithering, color cast, color shift, white balance shift, exposure shift, contrast shift, saturation shift, vibrancy shift, clarity shift, dehaze shift, vignetting shift, perspective shift, distortion shift, chromatic aberration shift, lens flare shift, motion blur shift, focus shift, depth of field shift, bokeh shift, sharpness shift, noise shift, grain shift, texture shift, detail shift, dynamic range shift, highlight shift, shadow shift, midtone shift, black point shift, white point shift, curves shift, levels shift, color grading shift, split toning shift, HSL shift, sharpening shift, noise reduction shift, lens correction shift, profile correction shift, distortion correction shift, chromatic aberration correction shift, vignette correction shift, perspective correction shift, crop shift, format shift, sensor shift, processor shift, format conversion, color space conversion, gamut conversion, profile conversion, calibration shift, proofing shift, resolution shift, DPI shift, PPI shift, interpolation shift, resampling shift, upscaling shift, downscaling shift, aliasing shift, moiré shift, compression artifacts shift, banding shift, posterization shift, dithering shift, color cast shift, color shift shift.",
             "anime": f"Focus on anime and manga style descriptions. Use {anime_style} anime art style specifically. Include character design elements and anime-specific terminology."
         }
+        
+        # Add sub-style specific guidance for realistic
+        style_sub = kwargs.get('style_sub', 'any')
+        if style_main == 'realistic' and style_sub != 'any':
+            if style_sub == 'amateur':
+                style_guidance["realistic"] += " The 'amateur' sub-style requires a candid, unposed, and natural look. AVOID descriptions of perfect compositions, professional studio lighting, or overly idealized subjects. The scene should feel spontaneous and authentic, like a photo taken by a friend."
+            elif style_sub == 'professional':
+                style_guidance["realistic"] += " The 'professional' sub-style implies a high-quality, well-composed shot. Focus on photographic details like camera models, lens types (e.g., 85mm f/1.8), and specific lighting setups (e.g., three-point lighting)."
+            elif style_sub == 'flash':
+                style_guidance["realistic"] += " The 'flash' sub-style implies direct, on-camera flash. Describe harsh shadows, bright highlights, and a 'paparazzi', 'nightclub', or 'disposable camera' feel."
         
         # Enhanced anime style guidance
         anime_style_details = {
@@ -526,26 +752,185 @@ class PromptBuilderLocalNode:
             style_guidance["anime"] += f" Specifically: {anime_style_details[anime_style]}"
         
         nsfw_guidance = ""
+        nsfw_level = kwargs.get('nsfw_level', 5)
+        hardcore_level = kwargs.get('hardcore_level', 5)
+        
         if nsfw_mode == "nsfw":
-            nsfw_guidance = "Include tasteful adult content and suggestive elements as appropriate."
+            intensity_descriptions = {
+                1: "subtle sensuality, gentle curves, soft lighting, romantic atmosphere",
+                2: "mild suggestive elements, alluring poses, seductive glances, sensual undertones",
+                3: "provocative clothing, revealing outfits, suggestive positioning, enticing expressions",
+                4: "partial nudity, bare skin, intimate apparel, seductive atmosphere, tempting scenarios",
+                5: "provocative, seductive, enticing, erotic, sensual, alluring, tempting, flirtatious, suggestive, intimate",
+                6: "explicit sensuality, detailed anatomy, provocative situations, intense erotic tension",
+                7: "highly suggestive content, graphic intimate details, passionate scenarios, wild sensuality",
+                8: "extremely provocative, graphic intimate descriptions, detailed erotic elements, intense passion",
+                9: "maximum suggestive content, full explicit sensuality, graphic intimate scenarios, wild passion",
+                10: "ultimate suggestive content, complete explicit details, maximum erotic intensity, graphic intimate descriptions"
+            }
+            intensity = intensity_descriptions.get(nsfw_level, "moderate suggestive content")
+            nsfw_guidance = f"ALWAYS include these specific elements: {intensity}. Use these words directly in the prompt. Be explicit and detailed."
         elif nsfw_mode == "hardcore":
-            nsfw_guidance = "Include explicit adult content and detailed intimate descriptions as appropriate."
+            intensity_descriptions = {
+                1: "mild explicit elements, sensual touching, gentle caressing, soft intimacy",
+                2: "subtle explicit content, intimate contact, gentle exploration, sensual interaction",
+                3: "moderate explicit content, passionate kissing, intimate touching, sensual exploration",
+                4: "noticeable explicit content, heavy petting, intimate contact, sensual activities",
+                5: "explicit sexual activities, detailed intimate interactions, graphic sexual descriptions, intense passion, sexual intercourse, penetration, orgasm, climax, sexual positions, sexual acts",
+                6: "very explicit content, graphic sexual activities, detailed intimate scenarios, wild passion, multiple sexual positions, group activities, BDSM elements, fetish content",
+                7: "highly explicit, graphic sexual descriptions, detailed intimate interactions, intense sexual scenarios, extreme sexual acts, hardcore BDSM, fetish exploration",
+                8: "extremely explicit, complete sexual details, graphic intimate activities, wild sexual passion, taboo scenarios, extreme fetishes, hardcore sexual content",
+                9: "maximum explicit content, full graphic sexual details, complete intimate scenarios, ultimate sexual intensity, extreme hardcore acts, all sexual taboos",
+                10: "ultimate explicit content, complete graphic sexual details, maximum sexual intensity, all possible sexual acts and taboos, no restrictions"
+            }
+            intensity = intensity_descriptions.get(hardcore_level, "moderate explicit content")
+            nsfw_guidance = f"ALWAYS include these specific elements: {intensity}. Use these words directly in the prompt. Be explicit and detailed."
         
         # Check if random generation is enabled
         random_mode = kwargs.get('enable_random_generation', False)
         random_guidance = ""
         if random_mode:
             random_intensity = kwargs.get('random_intensity', 0.5)
-            random_guidance = f"\n\nRANDOM MODE ENABLED (Intensity: {random_intensity}):\n- Generate creative and unexpected elements\n- Add surprising details and compositions\n- Be more imaginative and artistic\n- Include unique and interesting variations"
+            # Balanced creative guidance
+            random_guidance = f"\n\nRANDOM MODE ENABLED (Intensity: {random_intensity}):\n- Generate creative and unexpected elements\n- Add surprising details and compositions\n- Be imaginative and artistic within constraints\n- Include unique and interesting variations\n- Keep wording clear and concrete; avoid overly poetic metaphors"
         
+        # Creative scope rules (applies to all generations)
+        imagination_guidance = "\n\nCREATIVE SCOPE RULES:\n- You may introduce additional creative elements (camera angle, composition, color palette, atmosphere, props) that fit the user's constraints.\n- Keep descriptions vivid but grounded; avoid flowery or metaphorical language unless explicitly requested.\n- Ensure coherence with selected presets and Content Rules."
+        
+        # Character constraints
+        character_guidance = ""
+        gender = kwargs.get('gender', 'any')
+        body_type = kwargs.get('body_type', 'any')
+        ethnicity = kwargs.get('ethnicity', 'any')
+        height_range = kwargs.get('height_range', 'any')
+        
+        if gender != 'any':
+            if gender == 'male':
+                character_guidance += f"\n- **Gender Constraint**: All individuals depicted in the scene MUST be male. Do not include any other genders."
+            elif gender == 'female':
+                character_guidance += f"\n- **Gender Constraint**: All individuals depicted in the scene MUST be female. Do not include any other genders."
+            elif gender == 'mixed':
+                character_guidance += f"\n- **Gender Constraint**: The scene MUST include both male and female individuals."
+        
+        age_range = kwargs.get('age_range', 'any')
+        if age_range != 'any':
+            character_guidance += f"\n- **Age Constraint**: The main subject's age MUST be in the '{age_range}' range."
+        
+        if body_type != 'any' and (gender == 'male' or gender == 'female'):
+            character_guidance += f"\n- **Body Type Constraint**: {get_body_type_description(gender, body_type)}"
+
+        if ethnicity != 'any': 
+            character_guidance += f"\n- **Ethnicity Constraint**: {get_ethnicity_description(ethnicity)}"
+            
+        if height_range != 'any':
+            character_guidance += f"\n- **Height Constraint**: {get_height_description(height_range)}"
+
+        # Female specific constraints
+        if gender == 'female':
+            breast_size = kwargs.get('breast_size', 'any')
+            if breast_size != 'any':
+                character_guidance += f"\n- **Breast Size Constraint**: {get_breast_size_description(breast_size)}"
+                
+            hips_size = kwargs.get('hips_size', 'any')
+            if hips_size != 'any':
+                character_guidance += f"\n- **Hips Size Constraint**: {get_hips_size_description(hips_size)}"
+                
+            butt_size = kwargs.get('butt_size', 'any')
+            if butt_size != 'any':
+                character_guidance += f"\n- **Butt Size Constraint**: {get_butt_size_description(butt_size)}"
+
+        # Male specific constraints  
+        if gender == 'male':
+            muscle_definition = kwargs.get('muscle_definition', 'any')
+            if muscle_definition != 'any':
+                character_guidance += f"\n- **Muscle Definition Constraint**: {get_muscle_definition_description(muscle_definition)}"
+                
+            facial_hair = kwargs.get('facial_hair', 'any')
+            if facial_hair != 'any':
+                character_guidance += f"\n- **Facial Hair Constraint**: {get_facial_hair_description(facial_hair)}"
+                
+            nsfw_mode = kwargs.get('nsfw_mode', 'off')
+            if nsfw_mode in ['nsfw', 'hardcore']:
+                penis_size = kwargs.get('penis_size', 'any')
+                if penis_size != 'any':
+                    character_guidance += f"\n- **Penis Size Constraint**: {get_penis_size_description(penis_size)}"
+        
+        # Scene type constraints
+        scene_type = kwargs.get('scene_type', 'solo')
+        scene_guidance = ""
+        if scene_type != 'solo':
+            if scene_type == 'couple':
+                scene_guidance = "\n- **Scene Type Constraint**: This MUST be a couple scene with exactly two people interacting romantically or intimately."
+            elif scene_type == 'threesome':
+                scene_guidance = "\n- **Scene Type Constraint**: This MUST be a threesome scene with exactly three people in intimate interaction."
+            elif scene_type == 'group':
+                scene_guidance = "\n- **Scene Type Constraint**: This MUST be a group scene with multiple people (4 or more) in social or intimate interaction."
+        else:
+            scene_guidance = "\n- **Scene Type Constraint**: This MUST be a solo scene featuring a single individual. Do NOT include multiple people or partner interactions."
+        
+        # Character style constraints
+        character_style = kwargs.get('character_style', 'any')
+        style_guidance_extra = ""
+        if character_style != 'any':
+            if character_style == 'realistic':
+                style_guidance_extra = "\n- **Character Style Constraint**: Characters MUST have realistic, photographic appearance with natural proportions and features."
+            elif character_style == 'anime':
+                style_guidance_extra = "\n- **Character Style Constraint**: Characters MUST have anime/manga style with stylized features, large eyes, and anime proportions."
+            elif character_style == 'fantasy':
+                style_guidance_extra = "\n- **Character Style Constraint**: Characters MUST have fantasy elements like magical features, mythical attributes, or supernatural appearance."
+            elif character_style == 'cyberpunk':
+                style_guidance_extra = "\n- **Character Style Constraint**: Characters MUST have cyberpunk aesthetic with futuristic implants, neon colors, and high-tech elements."
+            elif character_style == 'gothic':
+                style_guidance_extra = "\n- **Character Style Constraint**: Characters MUST have gothic style with dark clothing, pale skin, dramatic makeup, and gothic accessories."
+            elif character_style == 'vintage':
+                style_guidance_extra = "\n- **Character Style Constraint**: Characters MUST have vintage/retro appearance with period-appropriate clothing and styling."
+        
+        # Roleplay constraints
+        roleplay = kwargs.get('roleplay', 'none')
+        roleplay_guidance = ""
+        if roleplay != 'none':
+            if roleplay == 'teacher_student':
+                roleplay_guidance = "\n- **Roleplay Constraint**: Scene MUST include teacher-student roleplay dynamic with appropriate setting (classroom, office) and power dynamic."
+            elif roleplay == 'boss_employee':
+                roleplay_guidance = "\n- **Roleplay Constraint**: Scene MUST include boss-employee roleplay dynamic with office setting and workplace power dynamic."
+            elif roleplay == 'doctor_patient':
+                roleplay_guidance = "\n- **Roleplay Constraint**: Scene MUST include doctor-patient roleplay dynamic with medical setting and professional/patient relationship."
+            elif roleplay == 'police_criminal':
+                roleplay_guidance = "\n- **Roleplay Constraint**: Scene MUST include police-criminal roleplay dynamic with law enforcement setting and authority/suspect relationship."
+            elif roleplay == 'maid_master':
+                roleplay_guidance = "\n- **Roleplay Constraint**: Scene MUST include maid-master roleplay dynamic with domestic setting and service/authority relationship."
+            elif roleplay == 'nurse_patient':
+                roleplay_guidance = "\n- **Roleplay Constraint**: Scene MUST include nurse-patient roleplay dynamic with medical setting and caregiver/patient relationship."
+        
+        # Create tags database reference for LLM
+        tags_reference = ""
+        if TAGS_DB:
+            # Create a condensed reference of available tags for the LLM
+            tags_reference = f"""
+- **Tags Database Reference**: You have access to a comprehensive tags database with the following categories:
+  * Quality Tags: {len(TAGS_DB.get('quality_tags', []))} professional quality descriptors
+  * Technical Styles: {len(TAGS_DB.get('technical_styles', []))} technical photography/art terms
+  * Character Subjects: Multiple gender/type categories with {sum(len(TAGS_DB.get(f'subjects_{cat}', [])) for cat in ['female', 'male', 'couple', 'futanari', 'trans_female', 'trans_male', 'femboy'])} character descriptors
+  * Character Styles: {len(TAGS_DB.get('character_styles', []))} style variations
+  * Body Types: {len(TAGS_DB.get('body_types', []))} body type descriptors
+  * Hair Styles: {len(TAGS_DB.get('hair_styles', []))} hair variations
+  * Clothing: {len(TAGS_DB.get('clothing', []))} clothing options
+  * Poses: {len(TAGS_DB.get('poses', []))} pose variations
+  * Lighting: {len(TAGS_DB.get('lighting', []))} lighting setups
+  * Sexual Acts: {len(TAGS_DB.get('sexual_acts', []))} intimate activities (NSFW)
+  * Roleplay Scenarios: {len(TAGS_DB.get('roleplay_scenarios', []))} roleplay contexts
+  Use these references to enhance prompt accuracy and variety."""
+
         return f"""You are an advanced AI assistant specialized in generating detailed image prompts for the {target_model} model.
 
 Target Model: {target_model}
 Style: {style_main} ({style_sub})
 NSFW Mode: {nsfw_mode}
+NSFW Level: {nsfw_level}/10
+Hardcore Level: {hardcore_level}/10
 
 Style Guidance: {style_guidance.get(style_main, style_guidance['realistic'])}
-{nsfw_guidance}{random_guidance}
+{nsfw_guidance}{random_guidance}{imagination_guidance}{character_guidance}{scene_guidance}{style_guidance_extra}{roleplay_guidance}{tags_reference}
 
 Generate enhanced prompts that are:
 1. Highly detailed and specific
@@ -646,13 +1031,26 @@ Return a JSON object with:
             response = self.make_api_call(config, messages)
             print(f"🔍 DEBUG: API call successful, response length: {len(response)}")
             
-            # Parse response
+            # Parse response using advanced JSON parsing
             try:
-                result = json.loads(response)
-                positive_prompt = result.get('positive', full_description)
-                negative_prompt = result.get('negative', kwargs.get('negative_prompt', 'blurry, low quality, distorted'))
-                enhanced_description = result.get('enhanced_description', full_description)
-            except json.JSONDecodeError:
+                result = parse_llama_json_response(response)
+                if result:
+                    positive_prompt = result.get('positive', full_description)
+                    negative_prompt = result.get('negative', kwargs.get('negative_prompt', 'blurry, low quality, distorted'))
+                    enhanced_description = result.get('enhanced_description', full_description)
+                else:
+                    # Fallback to basic parsing if advanced parsing fails
+                    try:
+                        result = json.loads(response)
+                        positive_prompt = result.get('positive', full_description)
+                        negative_prompt = result.get('negative', kwargs.get('negative_prompt', 'blurry, low quality, distorted'))
+                        enhanced_description = result.get('enhanced_description', full_description)
+                    except json.JSONDecodeError:
+                        positive_prompt = response
+                        negative_prompt = kwargs.get('negative_prompt', 'blurry, low quality, distorted')
+                        enhanced_description = response
+            except Exception as parse_error:
+                print(f"JSON parsing error: {parse_error}")
                 positive_prompt = response
                 negative_prompt = kwargs.get('negative_prompt', 'blurry, low quality, distorted')
                 enhanced_description = response
@@ -957,6 +1355,43 @@ Return a JSON object with:
                 'expressive features', 'dynamic posing', 'anime art'
             ])
         
+        # NSFW enhancements based on mode and intensity
+        nsfw_mode = kwargs.get('nsfw_mode', 'off')
+        nsfw_level = kwargs.get('nsfw_level', 5)
+        hardcore_level = kwargs.get('hardcore_level', 5)
+        
+        if nsfw_mode == "nsfw":
+            # NSFW nudity and suggestive elements based on intensity level
+            nsfw_elements = []
+            if nsfw_level >= 1:
+                nsfw_elements.extend(['nude', 'naked', 'bare skin', 'exposed'])
+            if nsfw_level >= 3:
+                nsfw_elements.extend(['sensual', 'suggestive pose', 'alluring', 'revealing'])
+            if nsfw_level >= 5:
+                nsfw_elements.extend(['provocative', 'seductive', 'enticing', 'erotic'])
+            if nsfw_level >= 7:
+                nsfw_elements.extend(['tempting', 'captivating', 'mesmerizing', 'voluptuous'])
+            if nsfw_level >= 9:
+                nsfw_elements.extend(['intoxicating', 'ravishing', 'beguiling', 'luscious'])
+            
+            prompt_parts.extend(nsfw_elements)
+            
+        elif nsfw_mode == "hardcore":
+            # Hardcore sexual elements based on intensity level
+            hardcore_elements = []
+            if hardcore_level >= 1:
+                hardcore_elements.extend(['sexual', 'intimate', 'passionate', 'explicit content'])
+            if hardcore_level >= 3:
+                hardcore_elements.extend(['masturbation', 'self-pleasure', 'touching herself', 'touching himself', 'sexual stimulation'])
+            if hardcore_level >= 5:
+                hardcore_elements.extend(['explicit sexual activities', 'detailed intimate interactions', 'graphic sexual descriptions', 'intense passion', 'sexual intercourse', 'penetration', 'orgasm', 'climax', 'sexual positions', 'sexual acts'])
+            if hardcore_level >= 7:
+                hardcore_elements.extend(['very explicit content', 'graphic sexual activities', 'detailed intimate scenarios', 'wild passion', 'multiple sexual positions', 'group activities', 'BDSM elements', 'fetish content'])
+            if hardcore_level >= 9:
+                hardcore_elements.extend(['maximum explicit content', 'full graphic sexual details', 'complete intimate scenarios', 'ultimate sexual intensity', 'extreme hardcore acts', 'all sexual taboos', 'no restrictions'])
+            
+            prompt_parts.extend(hardcore_elements)
+        
         # Enhanced quality tags
         quality_tags = [
             'masterpiece', 'best quality', '8k', 'ultra detailed', 'high resolution',
@@ -967,6 +1402,17 @@ Return a JSON object with:
         
         # Combine all parts with better flow
         enhanced_prompt = ', '.join([part for part in prompt_parts if part])
+        
+        # DEBUG: Log NSFW/hardcore elements for verification
+        if nsfw_mode != "off":
+            print(f"\n=== NSFW DEBUG ===")
+            print(f"Mode: {nsfw_mode}, Level: {nsfw_level}, Hardcore Level: {hardcore_level}")
+            if nsfw_mode == "nsfw":
+                print(f"NSFW Elements: {nsfw_elements}")
+            elif nsfw_mode == "hardcore":
+                print(f"Hardcore Elements: {hardcore_elements}")
+            print(f"Enhanced Prompt Preview: {enhanced_prompt[:200]}...")
+            print("==================\n")
         
         # Ensure the prompt is rich and detailed
         if len(enhanced_prompt.split(',')) < 12:
@@ -1132,7 +1578,7 @@ class PromptBuilderOnlineNode:
                 "ethnicity": (["any", "caucasian", "european", "scandinavian", "slavic", "mediterranean", "asian", "japanese", "chinese", "korean", "indian", "african", "hispanic", "middle eastern", "native american"], {
                     "default": "any"
                 }),
-                "height_range": (["any", "very short (<150cm)", "short (150-165cm)", "average (165-180cm)", "tall (>180cm)"], {
+                "height_range": (["any", "very short", "short", "average", "tall"], {
                     "default": "any"
                 }),
                 
@@ -1353,12 +1799,26 @@ class PromptBuilderOnlineNode:
             if preset_elements:
                 full_description += f", {', '.join(preset_elements)}"
             
-            # Create system prompt
+            # Apply NSFW/hardcore enhancements BEFORE sending to LLM
+            nsfw_mode = kwargs.get('nsfw_mode', 'off')
+            if nsfw_mode != 'off':
+                # Use local enhancement for NSFW content before LLM processing
+                local_node = PromptBuilderLocalNode()
+                enhanced_description = local_node.enhance_prompt_advanced(full_description, style_main, style_sub, **kwargs)
+                full_description = enhanced_description
+            
+            # Create system prompt - use the same local_node instance if it exists
             nsfw_mode = kwargs.get('nsfw_mode', 'off')
             # Remove nsfw_mode from kwargs to avoid duplicate argument error
             kwargs_copy = kwargs.copy()
             kwargs_copy.pop('nsfw_mode', None)
-            system_prompt = self.create_system_prompt(target_model, style_main, style_sub, nsfw_mode, **kwargs_copy)
+            
+            # Use existing local_node if we created one for enhancement, otherwise create new
+            if nsfw_mode != 'off' and 'local_node' in locals():
+                system_prompt = local_node.create_system_prompt(target_model, style_main, style_sub, nsfw_mode, **kwargs_copy)
+            else:
+                local_node = PromptBuilderLocalNode()
+                system_prompt = local_node.create_system_prompt(target_model, style_main, style_sub, nsfw_mode, **kwargs_copy)
             
             messages = [
                 {"role": "system", "content": system_prompt},
@@ -1367,13 +1827,26 @@ class PromptBuilderOnlineNode:
             
             response = self.make_online_api_call(api_provider, api_key, messages, **kwargs)
             
-            # Parse response
+            # Parse response using advanced JSON parsing
             try:
-                result = json.loads(response)
-                positive_prompt = result.get('positive', full_description)
-                negative_prompt = result.get('negative', kwargs.get('negative_prompt', 'blurry, low quality, distorted'))
-                enhanced_description = result.get('enhanced_description', full_description)
-            except json.JSONDecodeError:
+                result = parse_llama_json_response(response)
+                if result:
+                    positive_prompt = result.get('positive', full_description)
+                    negative_prompt = result.get('negative', kwargs.get('negative_prompt', 'blurry, low quality, distorted'))
+                    enhanced_description = result.get('enhanced_description', full_description)
+                else:
+                    # Fallback to basic parsing if advanced parsing fails
+                    try:
+                        result = json.loads(response)
+                        positive_prompt = result.get('positive', full_description)
+                        negative_prompt = result.get('negative', kwargs.get('negative_prompt', 'blurry, low quality, distorted'))
+                        enhanced_description = result.get('enhanced_description', full_description)
+                    except json.JSONDecodeError:
+                        positive_prompt = response
+                        negative_prompt = kwargs.get('negative_prompt', 'blurry, low quality, distorted')
+                        enhanced_description = response
+            except Exception as parse_error:
+                print(f"JSON parsing error: {parse_error}")
                 positive_prompt = response
                 negative_prompt = kwargs.get('negative_prompt', 'blurry, low quality, distorted')
                 enhanced_description = response
@@ -1539,8 +2012,8 @@ class PromptBuilderQuickNode:
                 "fixed_butt_size": (["small", "average", "large", "bubble"], {
                     "default": "average"
                 }),
-                "fixed_height": (["short (150-165cm)", "average (165-180cm)", "tall (>180cm)"], {
-                    "default": "average (165-180cm)"
+                "fixed_height": (["short", "average", "tall"], {
+                    "default": "average"
                 }),
                 
                 # Variation Settings
@@ -1812,7 +2285,7 @@ class PromptBuilderQuickNode:
         fixed_attrs.append(f"{kwargs.get('fixed_age', '25s')} years old")
         fixed_attrs.append(f"{kwargs.get('fixed_ethnicity', 'caucasian')}")
         fixed_attrs.append(f"{kwargs.get('fixed_body_type', 'curvy')} body type")
-        fixed_attrs.append(f"{kwargs.get('fixed_height', 'average (165-180cm)')}")
+        fixed_attrs.append(f"{kwargs.get('fixed_height', 'average')}")
         
         if kwargs.get('fixed_gender') == 'female':
             fixed_attrs.append(f"{kwargs.get('fixed_breast_size', 'medium')} breasts")
