@@ -32,3 +32,6 @@ release/
 *.gguf
 *.exe
 *.asar
+# Ignore portable build variants (do not push to GitHub)
+portable-build-qwen/
+portable-build-qwen2/
