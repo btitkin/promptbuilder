@@ -23,6 +23,7 @@ export interface InvokeLLMPayload {
 // Define the shape of the API exposed by preload.js
 interface ElectronApi {
   invokeLLM: (task: string, payload: InvokeLLMPayload) => Promise<{ result?: string; error?: string } | string>;
+  on?: (channel: string, callback: (data: any) => void) => () => void;
 }
 
 declare global {
@@ -102,4 +103,15 @@ export async function invokeLLM(task: string, payload: InvokeLLMPayload): Promis
   }
 
   throw new Error('Received an invalid response from the local AI process.');
+}
+
+/**
+ * Subscribes to an IPC channel exposed via preload and returns an unsubscribe function.
+ */
+export function on(channel: string, callback: (data: any) => void): () => void {
+  if (!isElectronAvailable() || !window.electronAPI?.on) {
+    // No-op in browser; return a dummy unsubscribe
+    return () => {};
+  }
+  return window.electronAPI.on(channel, callback);
 }

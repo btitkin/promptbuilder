@@ -7,6 +7,7 @@ const isDev = !app.isPackaged;
 // LLM variables
 let llama;
 let model;
+let mainWindow; // keep reference to send progress events
 
 const DEFAULT_CONTEXT_SIZE = 2048; // było 512 – zwiększamy dla stabilności narracji
 const DEFAULT_MAX_NEW_TOKENS = 256;
@@ -169,7 +170,7 @@ const maxNewTokens = DEFAULT_MAX_NEW_TOKENS;
 
 function createWindow() {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 800,
@@ -289,19 +290,53 @@ ipcMain.handle('llm-request', async (_event, args) => {
 });
 
 // Initialize Llama model
-async function initializeLlama() {
+function emitProgress(percent, message) {
+  try {
+    if (mainWindow?.webContents) {
+      mainWindow.webContents.send('model-loading-progress', { percent, message });
+    }
+  } catch (_) {}
+}
+
+async function initializeLlama(withProgress = false) {
   try {
     console.log('Initializing Llama model...');
+    if (withProgress) emitProgress(5, 'Preparing model...');
     llama = await getLlama();
+    if (withProgress) emitProgress(15, 'Starting model load...');
     
     // Load a model - you can change this to your preferred model path
     const modelPath = process.env.LLAMA_MODEL_PATH || './models/Qwen2.5-7B-Instruct-Q4_K_M.gguf';
+    let intervalId;
+    if (withProgress) {
+      // Simulate progress while loading
+      let p = 15;
+      intervalId = setInterval(() => {
+        p = Math.min(p + 3, 80);
+        emitProgress(p, 'Loading model into memory...');
+      }, 500);
+    }
     model = await llama.loadModel({
       modelPath: modelPath,
       gpuLayers: 'max' // Pełne wykorzystanie GPU dla modelu 12B
     });
+    if (intervalId) clearInterval(intervalId);
+    if (withProgress) emitProgress(85, 'Initializing context...');
+    try {
+      // Warm up by creating a small context
+      const warmCtx = await model.createContext({ threads: 2 });
+      // Optionally prompt a token to ensure readiness
+      // Dispose if library supports; otherwise GC handles
+      if (typeof warmCtx?.dispose === 'function') warmCtx.dispose();
+    } catch (e) {
+      console.warn('Warm-up context failed (non-fatal):', e?.message || e);
+    }
     
     console.log('Llama model loaded successfully');
+    if (withProgress) {
+      emitProgress(100, 'Model ready');
+      try { mainWindow?.webContents?.send('model-loading-complete'); } catch (_) {}
+    }
     return true;
   } catch (error) {
     console.error('Failed to initialize Llama:', error);
@@ -405,6 +440,29 @@ function createMenu() {
 app.whenReady().then(() => {
   createWindow();
   createMenu();
+
+  // Kick off model loading with progress events, without blocking UI.
+  // Simulate periodic progress ticks so the UI doesn't appear stuck during long loads.
+  let intervalId;
+  let p = 15;
+  const startTicks = () => {
+    intervalId = setInterval(() => {
+      p = Math.min(p + 3, 80);
+      emitProgress(p, 'Loading model into memory...');
+    }, 500);
+  };
+  try {
+    emitProgress(5, 'Preparing model...');
+    startTicks();
+  } catch (_) {}
+
+  initializeLlama(true).catch((e) => {
+    console.error('Background model load failed:', e);
+    emitProgress(100, 'Model load failed — running without local LLM');
+    try { mainWindow?.webContents?.send('model-loading-complete'); } catch (_) {}
+  }).finally(() => {
+    if (intervalId) clearInterval(intervalId);
+  });
 
   app.on('activate', () => {
     // On macOS it's common to re-create a window in the app when the

@@ -1,4 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import LoadingScreen from './components/LoadingScreen';
+import { isElectronAvailable, on as electronOn } from './services/electronService';
 import { Header } from './components/Header';
 import { ModelSelector } from './components/ModelSelector';
 import { Toggle } from './components/Toggle';
@@ -85,6 +87,29 @@ const getQualityTagsForStyle = (styleFilter: StyleFilterType): string[] => {
 // Using centralized cleanLLMText from services/sanitizer
 
 function App(): JSX.Element {
+  // Model loading UI state (Electron only)
+  const [modelLoaded, setModelLoaded] = useState<boolean>(!isElectronAvailable());
+  const [loadProgress, setLoadProgress] = useState<number>(0);
+  const [loadStatus, setLoadStatus] = useState<string>('Initializing...');
+  const isLoadingGateActive = isElectronAvailable() && !modelLoaded;
+
+  useEffect(() => {
+    const unsubProgress = electronOn('model-loading-progress', (data: any) => {
+      const percent = typeof data?.percent === 'number' ? data.percent : 0;
+      const message = typeof data?.message === 'string' ? data.message : 'Loading...';
+      setLoadProgress(percent);
+      setLoadStatus(message);
+    });
+    const unsubComplete = electronOn('model-loading-complete', () => {
+      setLoadProgress(100);
+      setLoadStatus('Ready');
+      setModelLoaded(true);
+    });
+    return () => {
+      unsubProgress?.();
+      unsubComplete?.();
+    };
+  }, []);
   const [userInput, setUserInput] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('Google Imagen4');
   const [styleFilter, setStyleFilter] = useState<StyleFilterType>({ main: 'realistic', sub: 'film photography' });
@@ -218,6 +243,8 @@ function App(): JSX.Element {
   const [isImageGeneratorOpen, setIsImageGeneratorOpen] = useState<boolean>(false);
   const [promptForImageGen, setPromptForImageGen] = useState<string>('');
   const [isGeneratingImage, setIsGeneratingImage] = useState<boolean>(false);
+
+  // Loading gate handled in the final return to keep hook order consistent
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [imageGenError, setImageGenError] = useState<string | null>(null);
   
@@ -728,22 +755,43 @@ function App(): JSX.Element {
     return !hasSentencePunctuation && (delimiterCount >= 3 || hasTagPattern);
   }
 
-  const handleGenerate = () => {
+  // Smart Formatter for Generate Prompt: route based on model type
+  const handleGenerate = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const keywordInput = userInput;
-      const defaultQualityTags = "photorealistic, best quality, 8k, high detail, masterpiece";
-      const result = formatKeywordsToPrompt(keywordInput, defaultQualityTags);
-      setFinalPromptOutput(result);
+      // Gather inputs
+      const keywordString = getMainDescriptionTextBoxValue();
+      const targetModel = getSelectedAIModelFromUI();
 
-      const newHistory = [userInput, ...history.slice(0, 9)];
+      // Model type lists
+      const KEYWORD_BASED_MODELS = ['SDXL', 'SD 1.5', 'Pony', 'Midjourney', 'Stable Cascade', 'NoobAI'];
+      const NATURAL_LANGUAGE_MODELS = ['Flux', 'Google Imagen4', 'OpenAI', 'Illustrious'];
+
+      if (KEYWORD_BASED_MODELS.includes(targetModel)) {
+        // A) Keyword-based: mechanical formatter (non-AI)
+        const defaultQualityTags = 'photorealistic, best quality, 8k, high detail, masterpiece';
+        const finalPrompt = formatKeywordsToPrompt(keywordString, defaultQualityTags);
+        setFinalPromptOutput(finalPrompt);
+      } else if (NATURAL_LANGUAGE_MODELS.includes(targetModel)) {
+        // B) Natural-language models: AI conversion to a descriptive paragraph
+        const conversionPrompt = `Take the following character keywords and write a single, high-quality, descriptive paragraph in English. The paragraph should be a direct instruction for an image generation AI. Keywords: "${keywordString}"`;
+        const finalPrompt = await callAIWithInput(conversionPrompt, targetModel);
+        setFinalPromptOutput(finalPrompt);
+      } else {
+        // C) Fallback: mechanical keyword formatting
+        const defaultQualityTags = 'photorealistic, best quality, 8k, high detail, masterpiece';
+        const finalPrompt = formatKeywordsToPrompt(keywordString, defaultQualityTags);
+        setFinalPromptOutput(finalPrompt);
+      }
+
+      // Save history of keyword input (not final prompt)
+      const newHistory = [keywordString, ...history.slice(0, 9)];
       setHistory(newHistory);
       try {
         localStorage.setItem('promptHistory', JSON.stringify(newHistory));
-      } catch (e) { console.error("Failed to save history", e); }
-
+      } catch (e) { console.error('Failed to save history', e); }
     } catch (error) {
       console.error('Error generating prompt:', error);
       setError(error instanceof Error ? error.message : 'An error occurred while generating the prompt');
@@ -873,24 +921,39 @@ function App(): JSX.Element {
     const randomEyeColor = eyeColorOptions[Math.floor(Math.random() * eyeColorOptions.length)];
     keywordParts.push(`eye_color: ${randomEyeColor}`);
     
-    // Scene settings - CORE CATEGORIES (SFW pools per spec)
+    // Scene settings - CORE CATEGORIES with explicit NSFW/SFW pools
     const nsfwMode = settings.nsfwSettings?.mode;
-    const locationOptions = ['studio', 'outdoor', 'beach', 'forest', 'city', 'office', 'cafe'];
+    const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+    // Critical gating: choose pools based on nsfw_mode
+    let clothingPool: string[];
+    let posePool: string[];
+    let locationPool: string[];
+
+    if (nsfwMode === 'nsfw' || nsfwMode === 'hardcore') {
+      // NSFW pools (full adventurous lists)
+      clothingPool = ['lingerie', 'bikini', 'naked', 'bondage gear', 'sheer top', 'garter shorts', 'pasties'];
+      posePool = ['seductive pose', 'provocative stance', 'lying on bed', 'arched back', 'on knees', 'legs spread'];
+      locationPool = ['bedroom', 'dungeon', 'porn studio set', 'hot tub', 'locker room', 'private beach'];
+    } else {
+      // SFW pools
+      clothingPool = ['casual clothes', 'business suit', 'summer dress', 'jeans and t-shirt'];
+      posePool = ['standing', 'sitting', 'walking', 'leaning against a wall'];
+      locationPool = ['city street', 'forest', 'park', 'library', 'cafe'];
+    }
+
+    // Location: use selected or randomize from the appropriate pool
     if (settings.location && settings.location.length > 0) {
       keywordParts.push(`location: ${settings.location.join(', ')}`);
     } else {
-      const randomLocation = locationOptions[Math.floor(Math.random() * locationOptions.length)];
-      keywordParts.push(`location: ${randomLocation}`);
+      keywordParts.push(`location: ${pick(locationPool)}`);
     }
-    
-    // Pose Presets - Opt-in: omit when none selected
+
+    // Pose: use selected or randomize from the appropriate pool
     if (settings.pose && settings.pose.length > 0) {
       keywordParts.push(`pose: ${settings.pose.join(', ')}`);
-    } else if (nsfwMode === 'nsfw' || nsfwMode === 'hardcore') {
-      // NSFW fallback randomization for pose when none selected
-      const nsfwPoseOptions = ['seductive pose', 'provocative stance', 'lying on bed'];
-      const randomNsfwPose = nsfwPoseOptions[Math.floor(Math.random() * nsfwPoseOptions.length)];
-      keywordParts.push(`pose: ${randomNsfwPose}`);
+    } else {
+      keywordParts.push(`pose: ${pick(posePool)}`);
     }
     
     // Gender-appropriate clothing selection - CORE CATEGORY (must never be empty)
@@ -898,17 +961,11 @@ function App(): JSX.Element {
     const femaleClothing = ['lingerie', 'nightwear', 'dress', 'skirt', 'blouse', 'heels', 'stockings', 'garter belt', 'corset', 'babydoll', 'negligee', 'teddy', 'chemise', 'bustier', 'peignoir', 'robe', 'kimono', 'sarong', 'bikini', 'monokini', 'thong', 'g-string', 'panties', 'bra', 'bustier', 'corset', 'bodystocking', 'fishnets', 'thigh highs', 'opera gloves', 'choker', 'collar', 'harness', 'pasties', 'crotchless', 'open cup', 'see-through', 'mesh', 'lace', 'satin', 'silk', 'velvet', 'latex', 'leather', 'vinyl', 'pvc', 'fetish wear', 'bondage gear', 'shibari', 'rope', 'cuffs', 'gag', 'blindfold', 'mask', 'hood', 'leash', 'plug', 'vibrator', 'dildo', 'butt plug', 'anal beads', 'cock ring', 'ball gag', 'spreader bar', 'whip', 'crop', 'paddle', 'flogger', 'nipple clamps', 'clothespins', 'zipper', 'electro play', 'wax play', 'ice play', 'knife play', 'blood play', 'scat play', 'watersports', 'golden shower', 'fisting', 'fingering', 'masturbation', 'orgasm', 'cum', 'creampie', 'facials', 'bukakke', 'gangbang', 'orgy', 'swinging', 'cuckolding', 'hotwife', 'voyeurism', 'exhibitionism', 'public', 'outdoor', 'risky', 'dangerous', 'illegal', 'taboo', 'forbidden', 'degrading', 'humiliating', 'painful', 'pleasurable', 'ecstasy', 'bliss', 'nirvana', 'transcendence'];
     const maleClothing = ['suit', 'tuxedo', 'dress shirt', 'tie', 'vest', 'blazer', 'slacks', 'dress pants', 'khakis', 'jeans', 't-shirt', 'polo shirt', 'sweater', 'hoodie', 'jacket', 'coat', 'overcoat', 'trench coat', 'raincoat', 'windbreaker', 'parka', 'anorak', 'bomber jacket', 'leather jacket', 'denim jacket', 'vest', 'waistcoat', 'cardigan', 'sweatshirt', 'joggers', 'sweatpants', 'shorts', 'swim trunks', 'board shorts', 'briefs', 'boxers', 'boxer briefs', 'thong', 'jockstrap', 'athletic supporter', 'compression shorts', 'sports jersey', 'uniform', 'military uniform', 'police uniform', 'firefighter uniform', 'paramedic uniform', 'doctor coat', 'lab coat', 'chef uniform', 'waiter uniform', 'butler uniform', 'chauffeur uniform', 'pilot uniform', 'flight attendant uniform', 'conductor uniform', 'train engineer uniform', 'bus driver uniform', 'taxi driver uniform', 'delivery uniform', 'mailman uniform', 'construction worker uniform', 'mechanic uniform', 'plumber uniform', 'electrician uniform', 'carpenter uniform', 'painter uniform', 'gardener uniform', 'farmer uniform', 'rancher uniform', 'cowboy outfit', 'western wear', 'biker outfit', 'motorcycle gear', 'leathers', 'riding jacket', 'riding pants', 'boots', 'helmet', 'gloves', 'goggles', 'scarf', 'hat', 'cap', 'beanie', 'beret', 'fedora', 'trilby', 'bowler', 'top hat', 'cowboy hat', 'sombrero', 'baseball cap', 'snapback', 'trucker hat', 'bucket hat', 'sun hat', 'visor', 'headband', 'bandana', 'durag', 'turban', 'yarmulke', 'kippah', 'hijab', 'niqab', 'burqa', 'chador', 'abaya', 'thawb', 'dishdasha', 'kandura', 'jalabiya', 'sherwani', 'achkan', 'kurta', 'dhoti', 'lungi', 'sari', 'saree', 'lehenga', 'choli', 'salwar kameez', 'shalwar kameez', 'patiala suit', 'anarkali suit', 'ghagra', 'churidar', 'dupatta', 'odhani', 'pallu', 'veshti', 'mundu', 'dastar', 'pagri', 'safa', 'pheta', 'mysore peta', 'rajasthani pagri', 'marathi pheta', 'punjabi pagri', 'bengali pagri', 'assamese pagri', 'oriya pagri', 'gujarati pagri', 'kashmiri pagri', 'himachali pagri', 'uttarakhandi pagri', 'bihari pagri', 'jharkhandi pagri', 'chhattisgarhi pagri', 'madhyapradeshi pagri', 'maharashtrian pagri', 'goan pagri', 'karnatakan pagri', 'keralite pagri', 'tamil pagri', 'andhran pagri', 'telangan pagri', 'pondicherrian pagri', 'lakshadweep pagri', 'andaman pagri', 'nicobar pagri', 'sikkimese pagri', 'arunachali pagri', 'nagalandi pagri', 'manipuri pagri', 'mizorami pagri', 'tripuri pagri', 'meghalayan pagri', 'assamese gamosa', 'naga shawl', 'mizo puan', 'khasi jainspem', 'garo dakmanda', 'bodo aronai', 'karbi pini', 'dimasa rikha', 'tiwa rikha', 'rabha rikha', 'mishing rikha', 'deori rikha', 'sonowal rikha', 'thengal rikha', 'ahom rikha', 'motok rikha', 'moran rikha', 'chutia rikha', 'koc rikha', 'koch rikha', 'rajbongshi rikha', 'sutiya rikha', 'khamti rikha', 'khamyang rikha', 'phake rikha', 'aiton rikha', 'khampti rikha', 'tai ahom rikha', 'tai phake rikha', 'tai khamti rikha', 'tai khamyang rikha', 'tai aitonia rikha', 'tai turung rikha', 'tai noria rikha', 'tai rongria rikha', 'tai saek rikha', 'tai dam rikha', 'tai daeng rikha', 'tai don rikha', 'tai kadai rikha', 'tai lue rikha', 'tai nuea rikha', 'tai nyaw rikha', 'tai pa di rikha', 'tai pong rikha', 'tai song rikha', 'tai tham rikha', 'tai viet rikha', 'tai ya rikha', 'tai yuan rikha', 'tai Zhuang rikha', 'tai bouyei rikha', 'tai dai rikha', 'tai hani rikha', 'tai jingpo rikha', 'tai lisu rikha', 'tai nu rikha', 'tai va rikha', 'tai wa rikha', 'tai akha rikha', 'tai lahu rikha', 'tai mien rikha', 'tai hmong rikha', 'tai yao rikha', 'tai she rikha', 'tai tujia rikha', 'tai bai rikha', 'tai yi rikha', 'tai naxi rikha', 'tai mosuo rikha', 'tai lhoba rikha', 'tai monpa rikha', 'tai sherpa rikha', 'tai tamang rikha', 'tai gurung rikha', 'tai magar rikha', 'tai newar rikha', 'tai tharu rikha', 'tai chepang rikha', 'tai sunuwar rikha', 'tai jirel rikha', 'tai lepcha rikha', 'tai limbu rikha', 'tai rai rikha', 'tai yakha rikha', 'tai hayu rikha', 'tai kumal rikha', 'tai majhi rikha', 'tai danuwar rikha', 'tai thami rikha', 'tai surel rikha', 'tai pahari rikha', 'tai khas rikha', 'tai kiranti rikha'];
     
-    // Clothing - CORE CATEGORY (SFW pool per spec) - must never be empty
-    let clothingOptions = ['casual', 'formal', 'business', 'sportswear', 'vintage'];
-    // NSFW expansion for clothing per spec
-    if (nsfwMode === 'nsfw' || nsfwMode === 'hardcore') {
-      clothingOptions = clothingOptions.concat(['lingerie', 'swimsuit', 'bondage gear', 'naked']);
-    }
+    // Clothing: use selected or randomize from the appropriate pool
     if (settings.clothing && settings.clothing.length > 0) {
       keywordParts.push(`clothing: ${settings.clothing.join(', ')}`);
     } else {
-      const randomClothing = clothingOptions[Math.floor(Math.random() * clothingOptions.length)];
-      keywordParts.push(`clothing: ${randomClothing}`);
+      keywordParts.push(`clothing: ${pick(clothingPool)}`);
     }
     
     // Shot type - CORE CATEGORY (SFW pool per spec)
@@ -1389,18 +1446,16 @@ function App(): JSX.Element {
     reader.readAsText(file);
   }, []);
 
-  if (showLogoAnimation) {
-    return <LogoAnimation show={showLogoAnimation} />;
-  }
-
-  if (!isAgeVerified) {
-    return <AgeVerificationModal 
+  return isLoadingGateActive ? (
+    <LoadingScreen progress={loadProgress} statusText={loadStatus} />
+  ) : showLogoAnimation ? (
+    <LogoAnimation show={showLogoAnimation} />
+  ) : !isAgeVerified ? (
+    <AgeVerificationModal 
       onConfirm={() => handleAgeVerification(true)} 
       onDeny={() => handleAgeVerification(false)} 
-    />;
-  }
-
-  return (
+    />
+  ) : (
     <>
       <div className="min-h-screen bg-gray-900 text-gray-200">
         <div className="max-w-6xl mx-auto px-4">

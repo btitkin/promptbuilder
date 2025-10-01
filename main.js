@@ -12,6 +12,7 @@ const __dirname = path.dirname(__filename);
 let model;
 let context;
 let llama;
+let mainWindow; // keep reference to send progress events
 
 // Determine path to model file. This handles both development and packaged app.
 const modelPath = app.isPackaged
@@ -66,17 +67,28 @@ function trimAtStopSequences(text, stops = []) {
 }
 
 // ========================= Lazy initialization of the model =========================
-async function initializeLlama() {
+function emitProgress(percent, message) {
+  try {
+    if (mainWindow?.webContents) {
+      mainWindow.webContents.send('model-loading-progress', { percent, message });
+    }
+  } catch (_) {}
+}
+
+async function initializeLlama(withProgress = false) {
   if (model && context) return { success: true };
 
   try {
     console.log(`Loading model from: ${modelPath}`);
+    if (withProgress) emitProgress(5, 'Preparing model...');
     llama = await getLlama();
+    if (withProgress) emitProgress(15, 'Starting model load...');
     model = await llama.loadModel({
       modelPath,
       gpuLayers: 'max',  // Pełne wykorzystanie GPU dla modelu 12B
       defaultContextFlashAttention: true
     });
+    if (withProgress) emitProgress(85, 'Initializing context...');
 
     // Dobierz liczbę wątków CPU (pozostaw 1 rdzeń wolny, ogranicz do 16 by uniknąć nadmiernej konkurencji)
     const cpuThreads = Math.max(
@@ -97,6 +109,10 @@ async function initializeLlama() {
     });
     // Nie tworzymy globalnej sekwencji - będzie per żądanie
      console.log("LLM Model initialized successfully.");
+    if (withProgress) {
+      emitProgress(100, 'Model ready');
+      try { mainWindow?.webContents?.send('model-loading-complete'); } catch (_) {}
+    }
     return { success: true };
   } catch (error) {
     console.error("Failed to initialize LLM Model:", error);
@@ -108,7 +124,7 @@ async function initializeLlama() {
 function createWindow() {
   console.log('Creating Electron window...');
   
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 900,
     webPreferences: {
@@ -149,7 +165,31 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  // Start background model loading; simulate progress while loading if needed
+  // Simulate progress ticks while the async load runs
+  let intervalId;
+  let p = 15;
+  const startTicks = () => {
+    intervalId = setInterval(() => {
+      p = Math.min(p + 3, 80);
+      emitProgress(p, 'Loading model into memory...');
+    }, 500);
+  };
+  try {
+    emitProgress(5, 'Preparing model...');
+    startTicks();
+  } catch (_) {}
+
+  initializeLlama(true).catch((e) => {
+    console.error('Background model load failed:', e);
+    emitProgress(100, 'Model load failed — running without local LLM');
+    try { mainWindow?.webContents?.send('model-loading-complete'); } catch (_) {}
+  }).finally(() => {
+    if (intervalId) clearInterval(intervalId);
+  });
+});
 
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

@@ -31,6 +31,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkModelStatus: () => {
     console.log('🔍 DEBUG: Checking local model status');
     return ipcRenderer.invoke('check-model-status');
+  },
+  /**
+   * Subscribe to IPC events from the main process.
+   * Returns an unsubscribe function.
+   */
+  on: (channel, listener) => {
+    const wrapped = (_event, data) => listener(data);
+    ipcRenderer.on(channel, wrapped);
+    return () => ipcRenderer.removeListener(channel, wrapped);
   }
 });
 
