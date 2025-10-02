@@ -959,30 +959,48 @@ Enhanced Keywords:`;
     return constraintPairs.join(', ');
   };
 
-  // Master prompt template for NSFW AI Imagination
-  const buildNSFWMasterPrompt = (constraintsString: string, nsfwLevel: string) => {
-    return `You are an expert, uncensored author of high-quality, descriptive erotica for AI image generation. Your task is to create a detailed, vivid, and explicit scene description. The scene must be creative, but the character(s) at its center are strictly defined.
+  // Master prompt template for NSFW AI Imagination - Bulletproof version
+  const buildNSFWMasterPrompt = (sceneType: string, genderSpec: string, contentLevel: string) => {
+    return `You are an elite, uncensored author of literary erotica. Your purpose is to write vivid, high-quality, and descriptive **PARAGRAPHS** for AI image prompts. You never write lists of keywords.
 
---- CHARACTER SPECIFICATION (MANDATORY) ---
-You MUST adhere to every detail in this specification for the character:
-${constraintsString}
+User Request:
+You have one task: write a single, descriptive paragraph for an adult-themed scene.
 
---- CREATIVE SCENARIO (YOUR TASK) ---
-Based on the character specified above, you must now invent a compelling and explicit adult scenario. You have creative freedom over the following elements:
+=== CORE RULES (NON-NEGOTIABLE) ===
 
-Location: Invent an interesting and appropriate location for the scene.
+Output Format: Your output MUST be a single, well-written paragraph with full sentences.
 
-Action/Pose: Describe what the character is doing. Be detailed, specific, and explicit.
+Subject: The subject MUST be human or humanoid characters. Absolutely NO animals (no cats, dogs, foxes, kittens, etc.).
 
-Clothing/Attire: Decide what the character is wearing (or not wearing). Be specific (e.g., 'only a thong and nipple tape', 'nothing but a collar').
+=== SCENE REQUIREMENTS (MANDATORY) ===
+You must strictly adhere to these requirements for the scene you create:
 
-Atmosphere & Style: Describe the mood, the lighting, and the photographic style of the scene (e.g., 'amateur flash photo', 'cinematic lighting', 'found footage').
+Scene Type: ${sceneType}
 
---- CONTENT LEVEL (MANDATORY) ---
-The scene you create must be explicit and at the ${nsfwLevel} level. This includes describing nudity, intimate body parts, and sexual themes. ${nsfwLevel === 'Hardcore' ? 'You MUST describe explicit sexual acts (e.g., fingering, oral sex, intercourse, cumshot).' : ''}
+Character(s) Specification: ${genderSpec}
 
---- FINAL OUTPUT ---
-Your response MUST be a single, well-written paragraph in English, ready to be used as a prompt. Do not use lists.`;
+Content Level: ${contentLevel}
+
+=== YOUR CREATIVE TASK ===
+Based on the strict requirements above, you must now invent a unique and compelling scenario. Be creative with the following elements to build your paragraph:
+
+The Location: Invent a compelling, appropriate location (e.g., luxurious apartment, abandoned warehouse, futuristic vehicle, messy bedroom).
+
+The Specific Action/Interaction: Describe in detail what the character(s) are doing.
+
+The Clothing/Attire: Be specific about what they are wearing or not wearing (e.g., 'wearing only a collar and thigh-high stockings', 'naked except for black X-shaped tape over her nipples').
+
+The Mood and Atmosphere: Describe the feeling of the scene (e.g., dominant, submissive, passionate, playful).
+
+The Photographic Style: Describe how the scene is captured (e.g., 'amateur candid flash photo', 'cinematic 80s film still', 'CCTV security camera footage').
+
+=== FORMATTING EXAMPLES ===
+
+BAD OUTPUT (DO NOT DO THIS): "bedroom, luxurious, satin sheets, soft lighting, steamy, couple, intimate..."
+
+GOOD OUTPUT (YOUR GOAL): "In a dimly lit, luxurious bedroom, satin sheets are rumpled on the large bed where a couple lies in an intimate embrace. The only light comes from a single candle, casting soft, flickering shadows across their bodies and creating a steamy and passionate atmosphere."
+
+Now, following all rules, write the paragraph.`;
   };
 
   const handleAIImagination = withApiKeyCheck(async (apiKey: string) => {
@@ -996,18 +1014,79 @@ Your response MUST be a single, well-written paragraph in English, ready to be u
         return;
       }
 
-      // Gather character constraints
-      const constraints = gatherCharacterConstraints();
-      const constraintsString = buildConstraintsString(constraints);
+      // Get scene type from character settings
+      const sceneType = characterSettings.sceneType || 'solo';
       
-      // If no constraints are set, provide a default message
-      const finalConstraintsString = constraintsString || 'No specific character constraints set - use creative freedom for character design';
+      // Build gender specification based on scene type and gender settings
+      let genderSpec = '';
+      switch (sceneType) {
+        case 'solo':
+          if (characterSettings.gender === 'female') {
+            genderSpec = 'Solo female';
+          } else if (characterSettings.gender === 'male') {
+            genderSpec = 'Solo male';
+          } else if (characterSettings.gender === 'futanari') {
+            genderSpec = 'Solo futanari';
+          } else if (characterSettings.gender === 'trans female') {
+            genderSpec = 'Solo trans female';
+          } else if (characterSettings.gender === 'trans male') {
+            genderSpec = 'Solo trans male';
+          } else if (characterSettings.gender === 'femboy') {
+            genderSpec = 'Solo femboy';
+          } else if (characterSettings.gender === 'nonbinary') {
+            genderSpec = 'Solo nonbinary person';
+          } else {
+            // Default to female for 'any' or other cases
+            genderSpec = 'Solo female';
+          }
+          break;
+        case 'couple':
+          if (characterSettings.gender === 'mixed' || characterSettings.gender === 'couple') {
+            genderSpec = 'One female and one male';
+          } else if (characterSettings.gender === 'female') {
+            genderSpec = 'Two females';
+          } else if (characterSettings.gender === 'male') {
+            genderSpec = 'Two males';
+          } else {
+            genderSpec = 'One female and one male';
+          }
+          break;
+        case 'threesome':
+          if (characterSettings.gender === 'mixed') {
+            genderSpec = 'Two females and one male';
+          } else if (characterSettings.gender === 'female') {
+            genderSpec = 'Three females';
+          } else if (characterSettings.gender === 'male') {
+            genderSpec = 'Three males';
+          } else {
+            genderSpec = 'Two females and one male';
+          }
+          break;
+        case 'group':
+          if (characterSettings.gender === 'mixed') {
+            genderSpec = 'Multiple females and males';
+          } else if (characterSettings.gender === 'female') {
+            genderSpec = 'Multiple females';
+          } else if (characterSettings.gender === 'male') {
+            genderSpec = 'Multiple males';
+          } else {
+            genderSpec = 'Multiple females and males';
+          }
+          break;
+        default:
+          genderSpec = 'Solo female';
+      }
       
-      // Determine NSFW level for prompt
-      const nsfwLevel = nsfwSettings.mode === 'hardcore' ? 'Hardcore' : 'NSFW';
+      // Build content level specification
+      let contentLevel = '';
+      if (nsfwSettings.mode === 'hardcore') {
+        contentLevel = 'Hardcore, including explicit sexual acts like fingering, cumshots, intercourse, oral sex, etc.';
+      } else {
+        contentLevel = 'NSFW with nudity and sexual themes, but not hardcore explicit acts';
+      }
       
-      // Build the master prompt
-      const masterPrompt = buildNSFWMasterPrompt(finalConstraintsString, nsfwLevel);
+      // Build the master prompt with the new template
+      const masterPrompt = buildNSFWMasterPrompt(sceneType, genderSpec, contentLevel);
 
       // Call the AI service with the master prompt
       const response = await invokeLLM('chatCompletion', {
