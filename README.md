@@ -229,6 +229,7 @@ Prompt Builder can operate with either a local LLM (Electron) or online APIs.
 
 - Place a GGUF model in `models/` (create the folder if it doesn't exist). Example filename:
   - `models/Qwen2.5-7B-Instruct-Q4_K_M.gguf`
+- Download model: [Qwen2.5-7B-Instruct-Q4_K_M.gguf](https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf?download=true) and place it under `models/`.
 - The Electron app looks for a default model file at startup. If you use a different filename, update the path in `main.js` accordingly.
 - GPU acceleration is enabled by default when available.
 
