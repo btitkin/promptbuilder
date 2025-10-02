@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 
 interface LogoAnimationProps {
   show: boolean;
+  progress?: number;
+  statusText?: string;
 }
 
 const fullText = "PromptBuilder";
 
-export const LogoAnimation: React.FC<LogoAnimationProps> = ({ show }) => {
+export const LogoAnimation: React.FC<LogoAnimationProps> = ({ show, progress = 0, statusText = 'Initializing...' }) => {
   const [shouldRender, setShouldRender] = useState(true);
   const [typedText, setTypedText] = useState('');
 
@@ -41,7 +43,7 @@ export const LogoAnimation: React.FC<LogoAnimationProps> = ({ show }) => {
   if (!shouldRender) return null;
 
   return (
-    <div className={`fixed inset-0 bg-gray-900 flex items-center justify-center z-50 ${!show ? 'animate-overlay-fade-out' : ''}`}>
+    <div className={`fixed inset-0 bg-gray-900 flex items-center justify-center z-50 ${!show ? 'animate-overlay-fade-out' : 'animate-fade-in'}`}>
       <div className="flex flex-col items-center">
         <div className="w-24 mb-4 animate-logo-fade-in-scale">
           <svg
@@ -74,6 +76,19 @@ export const LogoAnimation: React.FC<LogoAnimationProps> = ({ show }) => {
             {typedText}
             <span className="absolute text-accent animate-blink">▋</span>
           </h1>
+        </div>
+
+        {/* Progress section */}
+        <div className="w-64 mt-4">
+          <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden border border-gray-700 progress-track">
+            <div
+              className="h-full theme-accent progress-fill"
+              style={{ transform: `scaleX(${Math.max(0, Math.min(100, Math.floor(progress))) / 100})` }}
+            />
+          </div>
+          <div className="mt-3 text-xs text-gray-300 text-center">
+            {statusText} ({Math.max(0, Math.min(100, Math.floor(progress)))}%)
+          </div>
         </div>
       </div>
     </div>

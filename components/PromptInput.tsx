@@ -9,17 +9,20 @@ interface PromptInputProps {
   onGenerate: () => void;
   onRandom: () => void;
   onAIImagination: () => void;
+  onEnhance: () => void;
   isLoading: boolean;
   isGeneratingRandom: boolean;
+  isEnhancing: boolean;
   onSaveSnippet: (content: string) => void;
   onLockSelection?: (text: string) => void;
   lockedPhrases?: string[];
   onRemoveLockedPhrase?: (text: string) => void;
+  nsfwMode?: string; // Add nsfw mode to control button visibility
 }
 
-export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGenerate, onRandom, onAIImagination, isLoading, isGeneratingRandom, onSaveSnippet, onLockSelection, lockedPhrases, onRemoveLockedPhrase }) => {
+export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGenerate, onRandom, onAIImagination, onEnhance, isLoading, isGeneratingRandom, isEnhancing, onSaveSnippet, onLockSelection, lockedPhrases, onRemoveLockedPhrase, nsfwMode }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const anyLoading = isLoading || isGeneratingRandom;
+  const anyLoading = isLoading || isGeneratingRandom || isEnhancing;
 
   const getSelectionText = () => {
     const textarea = textareaRef.current;
@@ -117,26 +120,16 @@ export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGen
     onSaveSnippet(contentToSave);
   };
 
-  const controlButtonClass = "p-2 rounded-md hover:bg-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-transparent transition-colors text-indigo-400";
-  const textButtonClass = "flex items-center gap-2 text-sm text-indigo-400 font-semibold py-1 px-3 rounded-md hover:bg-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-transparent transition-colors";
+  const controlButtonClass = "p-2 rounded-md hover:bg-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-transparent transition-colors text-indigo-400 pressable wow-icon-btn";
+  const textButtonClass = "flex items-center gap-2 text-sm text-indigo-400 font-semibold py-1 px-3 rounded-md hover:bg-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-transparent transition-colors pressable";
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
+    <div className="space-y-2 animate-fade-in">
+      <div className="flex justify-between items-center wow-toolbar border-b border-gray-600 py-2 px-3">
         <label htmlFor="description" className="block text-sm font-medium text-gray-400">
           Enter your simple description
         </label>
         <div className="flex items-center gap-2">
-          <button
-            onClick={onGenerate}
-            disabled={anyLoading}
-            className={textButtonClass}
-            title="Compile final prompt for selected model"
-            data-testid="btn-generate-prompt"
-          >
-            {isLoading ? <LoadingSpinnerIcon /> : <KeyIcon />}
-            Generate Prompt
-          </button>
            <button onClick={() => handleTextTransform('increase')} disabled={anyLoading} className={controlButtonClass} title="Increase weight of selected text (e.g., (word:1.1))">
              <span className="font-bold text-lg leading-none">(+)</span>
            </button>
@@ -157,7 +150,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGen
            >
              <LockClosedIcon />
            </button>
-           <div className="border-l border-gray-600 h-6 mx-1"></div>
+           <div className="border-l border-gray-600 h-6 mx-1 wow-divider"></div>
            <button
             onClick={onRandom}
             disabled={anyLoading}
@@ -171,13 +164,24 @@ export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGen
 
           <button
             onClick={onAIImagination}
-            disabled={anyLoading}
+            disabled={anyLoading || (nsfwMode !== 'nsfw' && nsfwMode !== 'hardcore')}
             className={textButtonClass}
-            title="Generate creative inspiration with AI imagination"
+            title="Generate creative NSFW inspiration with AI imagination"
             data-testid="btn-ai-imagination"
           >
             {isGeneratingRandom ? <LoadingSpinnerIcon /> : <DiceIcon />}
-            AI Imagination
+            NSFW AI Imagination
+          </button>
+
+          <button
+            onClick={onEnhance}
+            disabled={anyLoading || !value}
+            className={textButtonClass}
+            title="Enhance keywords with AI for more creative and detailed descriptions"
+            data-testid="btn-enhance"
+          >
+            {isEnhancing ? <LoadingSpinnerIcon /> : <KeyIcon />}
+            Enhance
           </button>
         </div>
       </div>
@@ -207,7 +211,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGen
         ref={textareaRef}
         id="description"
         rows={8}
-        className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-y min-h-[220px] max-h-[70vh]"
+        className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md shadow-sm p-3 wow-textarea resize-y min-h-[220px] max-h-[70vh]"
         placeholder="e.g., a photorealistic portrait of a woman with red hair"
         value={value}
         onChange={onChange}
@@ -216,7 +220,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({ value, onChange, onGen
       <button
         onClick={onGenerate}
         disabled={anyLoading || !value}
-        className="w-full flex justify-center items-center gap-2 bg-accent text-white font-bold py-3 px-4 rounded-md hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent disabled:bg-gray-600 disabled:cursor-not-allowed transition-colo..."
+        className="w-full flex justify-center items-center gap-2 bg-accent text-white font-bold py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-accent disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors btn-primary-wow"
         data-testid="btn-generate"
       >
         {isLoading ? (

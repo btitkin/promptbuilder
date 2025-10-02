@@ -23,7 +23,8 @@ const PROVIDERS = ([
     { id: 'openai', label: 'OpenAI (GPT)', docUrl: 'https://platform.openai.com/api-keys' },
     { id: 'perplexity', label: 'Perplexity', docUrl: 'https://docs.perplexity.ai/docs/getting-started' },
     { id: 'together', label: 'Together AI', docUrl: 'https://api.together.ai/settings/api-keys' },
-    { id: 'qwen', label: 'Qwen (via Custom API)', docUrl: 'https://github.com/QwenLM/Qwen' },
+    // Rename label to a generic Custom API to avoid provider-specific wording
+    { id: 'qwen', label: 'Custom API (OpenAI-compatible)', docUrl: 'https://platform.openai.com/docs/api-reference' },
 ] as { id: ApiProvider; label: string; docUrl: string }[]).sort((a, b) => a.label.localeCompare(b.label));
 
 export const ApiSettings: React.FC<ApiSettingsProps> = ({ isOpen, onToggle, config, onChange }) => {
@@ -163,7 +164,7 @@ export const ApiSettings: React.FC<ApiSettingsProps> = ({ isOpen, onToggle, conf
               
               {currentProviderInfo && (
                 <a href={currentProviderInfo.docUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-indigo-400 hover:underline">
-                  How to set up Qwen with an OpenAI-compatible server?
+                  How to set up a Custom API (OpenAI-compatible)?
                 </a>
               )}
             </div>

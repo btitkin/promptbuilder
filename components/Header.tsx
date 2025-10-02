@@ -4,7 +4,7 @@ import { Logo } from './Logo';
 
 export const Header: React.FC = () => {
   return (
-    <header className="text-center">
+    <header className="text-center pt-4">
       <div className="flex items-center justify-center gap-2">
         <Logo className="h-12 w-auto" />
         <InfoTooltip

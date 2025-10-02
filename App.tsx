@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import LoadingScreen from './components/LoadingScreen';
-import { isElectronAvailable, on as electronOn } from './services/electronService';
+import { isElectronAvailable, on as electronOn, checkModelStatus, invokeLLM } from './services/electronService';
 import { Header } from './components/Header';
 import { ModelSelector } from './components/ModelSelector';
 import { Toggle } from './components/Toggle';
@@ -42,6 +42,7 @@ import { ImageGenerator } from './components/ImageGenerator';
 import { Instructions } from './components/Instructions';
 import { LogoAnimation } from './components/LogoAnimation';
 import { AgeVerificationModal } from './components/AgeVerificationModal';
+import { ModelTuning, TuningParameters } from './components/ModelTuning';
 import { MODEL_NAMES, MODELS, DEFAULT_NEGATIVE_PROMPT } from './constants';
 import type { AppSettings, StructuredPrompt, AdvancedSettingsState, NsfwSettingsState, StyleFilter as StyleFilterType, ApiConfigState, CharacterSettingsState, PromptSnippet, ApiProvider } from './types';
 import * as aiService from './services/aiService';
@@ -112,6 +113,53 @@ function App(): JSX.Element {
       unsubComplete?.();
     };
   }, []);
+
+  // Watchdog/fallback: if IPC events don't arrive, gently advance UI and probe status
+  useEffect(() => {
+    if (!isElectronAvailable() || modelLoaded) return;
+
+    const timers: NodeJS.Timeout[] = [];
+
+    // Gentle nudge after 1.2s if still at 0%
+    timers.push(setTimeout(() => {
+      setLoadProgress(prev => (prev <= 0 ? 5 : prev));
+      setLoadStatus(prev => (loadProgress <= 0 ? 'Warming up…' : prev));
+    }, 1200));
+
+    // Another nudge after 3s if still low
+    timers.push(setTimeout(() => {
+      setLoadProgress(prev => (prev < 10 ? 15 : prev));
+      setLoadStatus(prev => (loadProgress < 10 ? 'Checking local model…' : prev));
+    }, 3000));
+
+    // Probe local model after ~7s
+    timers.push(setTimeout(() => {
+      (async () => {
+        try {
+          const status = await checkModelStatus();
+          if (status?.available) {
+            setLoadProgress(prev => (prev < 80 ? 85 : prev));
+            setLoadStatus('Model detected; finishing init…');
+          } else {
+            setLoadStatus('Local model not detected; using cloud APIs');
+          }
+        } catch {
+          // keep silent; just cosmetic
+        }
+      })();
+    }, 7000));
+
+    // Finalize UI after ~10s if still gated
+    timers.push(setTimeout(() => {
+      setLoadProgress(prev => (prev < 95 ? 100 : prev));
+      setLoadStatus('Ready');
+      setModelLoaded(true);
+    }, 10000));
+
+    return () => {
+      timers.forEach(t => clearTimeout(t));
+    };
+  }, [modelLoaded, loadProgress]);
   const [userInput, setUserInput] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('Google Imagen4');
   const [styleFilter, setStyleFilter] = useState<StyleFilterType>({ main: 'realistic', sub: 'film photography' });
@@ -215,6 +263,7 @@ function App(): JSX.Element {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGeneratingKeywords, setIsGeneratingKeywords] = useState<boolean>(false);
   const [isGeneratingRandom, setIsGeneratingRandom] = useState<boolean>(false);
+  const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
@@ -270,6 +319,14 @@ function App(): JSX.Element {
   const [selectedTimeOfDayPresets, setSelectedTimeOfDayPresets] = useState<string[]>([]);
   const [selectedSpecialEffectsPresets, setSelectedSpecialEffectsPresets] = useState<string[]>([]);
   const [selectedAtmosphericPresets, setSelectedAtmosphericPresets] = useState<string[]>([]);
+
+  // Model tuning parameters state
+  const [tuningParameters, setTuningParameters] = useState<TuningParameters>({
+    temperature: 0.7,
+    topP: 1.0,
+    frequencyPenalty: 0.0,
+    presencePenalty: 0.0
+  });
 
 
   // State for UI sections
@@ -691,7 +748,7 @@ function App(): JSX.Element {
    * @param {string} qualityTags - A predefined string of quality tags (e.g., "photorealistic, best quality").
    * @returns {string} The final, formatted prompt.
    */
-  function formatKeywordsToPrompt(keywordString, qualityTags) {
+  function formatKeywordsMechanically(keywordString, qualityTags) {
     // Return empty if input is invalid
     if (!keywordString || typeof keywordString !== 'string') {
       return "";
@@ -699,23 +756,44 @@ function App(): JSX.Element {
     // Step 1: Split the string into individual parts by the comma.
     const parts = keywordString.split(',');
 
-    // Step 2: Extract ONLY the value (the text after the colon) from each part.
+    // Step 2: Process each part to extract and transform the value based on the key.
     const values = parts.map(part => {
       const separatorIndex = part.indexOf(':');
-
-      // If there is no colon, it might be a simple tag, so just trim it.
       if (separatorIndex === -1) {
         return part.trim();
       }
-      // Otherwise, get the value after the colon.
-      const value = part.substring(separatorIndex + 1);
-      return value.trim();
-    });
-    // Step 3: Filter out any potential empty values and join them back with a comma.
-    const cleanTags = values.filter(v => v).join(', ');
 
-    // Step 4: Prepend the quality tags to the beginning.
-    const finalPrompt = qualityTags + ', ' + cleanTags;
+      const key = part.substring(0, separatorIndex).trim();
+      const value = part.substring(separatorIndex + 1).trim();
+
+      switch (key) {
+        case 'hair_style':
+          return `${value} hairstyle`;
+        case 'hair_color':
+          return `${value} hair`;
+        case 'eye_color':
+          return `${value} eyes`;
+        case 'body_type':
+          return `${value} body`;
+        case 'facial_expression':
+          return `${value} expression`;
+        case 'pose':
+          return value.includes('pose') ? value : `${value} pose`;
+        case 'shot_type':
+          return value.includes('shot') ? value : `${value} shot`;
+        default:
+          return value; // For all other keys, just return the value as before.
+      }
+    });
+
+    // Step 3: Filter out any empty or undefined values.
+    const nonEmptyValues = values.filter(v => v);
+
+    // Step 4: Join the values back together with a comma and a space.
+    const mainPrompt = nonEmptyValues.join(', ');
+
+    // Step 5: Prepend the quality tags.
+    const finalPrompt = qualityTags + ", " + mainPrompt;
 
     return finalPrompt;
   }
@@ -737,7 +815,8 @@ function App(): JSX.Element {
       apiConfig.keys[apiConfig.provider] || '',
       input,
       modelName,
-      apiConfig.customConfig
+      apiConfig.customConfig,
+      tuningParameters
     );
     return cleanLLMText(result);
   };
@@ -774,7 +853,7 @@ function App(): JSX.Element {
       if (KEYWORD_BASED_MODELS.includes(targetModel)) {
         // A) Keyword-based: mechanical formatter (non-AI)
         const defaultQualityTags = 'photorealistic, best quality, 8k, high detail, masterpiece';
-        const finalPrompt = formatKeywordsToPrompt(keywordString, defaultQualityTags);
+        const finalPrompt = formatKeywordsMechanically(keywordString, defaultQualityTags);
         setFinalPromptOutput(finalPrompt);
       } else if (NATURAL_LANGUAGE_MODELS.includes(targetModel)) {
         // B) Natural-language models: AI conversion to a descriptive paragraph
@@ -784,7 +863,7 @@ function App(): JSX.Element {
       } else {
         // C) Fallback: mechanical keyword formatting
         const defaultQualityTags = 'photorealistic, best quality, 8k, high detail, masterpiece';
-        const finalPrompt = formatKeywordsToPrompt(keywordString, defaultQualityTags);
+        const finalPrompt = formatKeywordsMechanically(keywordString, defaultQualityTags);
         setFinalPromptOutput(finalPrompt);
       }
 
@@ -803,37 +882,153 @@ function App(): JSX.Element {
   };
 
   // Enhance feature removed for stability; no-op handler
-  const handleEnhance = () => {};
+  const handleEnhance = async () => {
+    if (!userInput.trim()) return;
+    
+    setIsEnhancing(true);
+    setError(null);
+
+    try {
+      // Create the correct enhancement prompt template as specified
+      const enhancementPrompt = `You are a prompt expansion expert. Your task is to take a list of basic keywords and enrich them with more specific and descriptive details, while maintaining the original \`key: value\` structure as much as possible.
+
+Instructions:
+1. Analyze the input keywords below.
+2. For each keyword or key-value pair, add more specific, creative, and descriptive details to its value.
+3. Output the new, enriched list of keywords in a single, comma-separated line.
+
+Example:
+INPUT: clothing: suit, location: city, hair_color: red
+CORRECT OUTPUT: clothing: tailored black pinstripe business suit with a crisp white shirt, location: rain-slicked neon-lit cyberpunk city street at night, hair_color: vibrant crimson red
+
+Input Keywords to Enhance:
+${userInput}
+
+Enhanced Keywords:`;
+
+      // Use the correct function for local GGUF model - invokeLLM directly
+      const response = await invokeLLM('chatCompletion', {
+        prompt: enhancementPrompt,
+        temperature: tuningParameters.temperature,
+        top_p: tuningParameters.topP,
+        frequency_penalty: tuningParameters.frequencyPenalty,
+        presence_penalty: tuningParameters.presencePenalty,
+        maxTokens: 500,
+        stop: ['<<EOD>>', 'USER:', 'ASSISTANT:']
+      });
+
+      // Clean and set the enhanced response
+      const cleanedResponse = cleanLLMText(response);
+      if (cleanedResponse && cleanedResponse.trim()) {
+        setUserInput(cleanedResponse.trim());
+      }
+      
+    } catch (error) {
+      console.error('Error enhancing keywords:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred while enhancing keywords');
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  // Function to gather all character constraints for NSFW AI Imagination
+  const gatherCharacterConstraints = () => {
+    const constraints: { [key: string]: string } = {};
+    
+    // Core character attributes
+    if (characterSettings.gender !== 'any') constraints.Gender = characterSettings.gender;
+    if (characterSettings.age !== 'any') constraints.Age = characterSettings.age;
+    if (characterSettings.ethnicity !== 'any') constraints.Ethnicity = characterSettings.ethnicity;
+    if (characterSettings.bodyType !== 'any') constraints['Body Type'] = characterSettings.bodyType;
+    if (characterSettings.height !== 'any') constraints.Height = characterSettings.height;
+    
+    // Physical features
+    if (characterSettings.breastSize !== 'any') constraints['Breast Size'] = characterSettings.breastSize;
+    if (characterSettings.hipsSize !== 'any') constraints['Hips Size'] = characterSettings.hipsSize;
+    if (characterSettings.buttSize !== 'any') constraints['Butt Size'] = characterSettings.buttSize;
+    if (characterSettings.penisSize !== 'any') constraints['Penis Size'] = characterSettings.penisSize;
+    if (characterSettings.muscleDefinition !== 'any') constraints['Muscle Definition'] = characterSettings.muscleDefinition;
+    if (characterSettings.facialHair !== 'any') constraints['Facial Hair'] = characterSettings.facialHair;
+    
+    return constraints;
+  };
+
+  // Function to build constraints string from character attributes
+  const buildConstraintsString = (constraints: { [key: string]: string }) => {
+    const constraintPairs = Object.entries(constraints).map(([key, value]) => `${key}: ${value}`);
+    return constraintPairs.join(', ');
+  };
+
+  // Master prompt template for NSFW AI Imagination
+  const buildNSFWMasterPrompt = (constraintsString: string, nsfwLevel: string) => {
+    return `You are an expert, uncensored author of high-quality, descriptive erotica for AI image generation. Your task is to create a detailed, vivid, and explicit scene description. The scene must be creative, but the character(s) at its center are strictly defined.
+
+--- CHARACTER SPECIFICATION (MANDATORY) ---
+You MUST adhere to every detail in this specification for the character:
+${constraintsString}
+
+--- CREATIVE SCENARIO (YOUR TASK) ---
+Based on the character specified above, you must now invent a compelling and explicit adult scenario. You have creative freedom over the following elements:
+
+Location: Invent an interesting and appropriate location for the scene.
+
+Action/Pose: Describe what the character is doing. Be detailed, specific, and explicit.
+
+Clothing/Attire: Decide what the character is wearing (or not wearing). Be specific (e.g., 'only a thong and nipple tape', 'nothing but a collar').
+
+Atmosphere & Style: Describe the mood, the lighting, and the photographic style of the scene (e.g., 'amateur flash photo', 'cinematic lighting', 'found footage').
+
+--- CONTENT LEVEL (MANDATORY) ---
+The scene you create must be explicit and at the ${nsfwLevel} level. This includes describing nudity, intimate body parts, and sexual themes. ${nsfwLevel === 'Hardcore' ? 'You MUST describe explicit sexual acts (e.g., fingering, oral sex, intercourse, cumshot).' : ''}
+
+--- FINAL OUTPUT ---
+Your response MUST be a single, well-written paragraph in English, ready to be used as a prompt. Do not use lists.`;
+  };
 
   const handleAIImagination = withApiKeyCheck(async (apiKey: string) => {
     setIsGeneratingRandom(true);
     setError(null);
 
     try {
-      // Simple prompt logic as specified: SFW or NSFW paragraph generation
-      const mode = nsfwSettings.mode;
-      let creativityPrompt = '';
-      
-      if (mode === 'off') {
-        creativityPrompt = 'Write a creative and descriptive paragraph in English about a character in a scene.';
-      } else {
-        creativityPrompt = 'Write a creative and explicit adult paragraph in English about a character in a scene.';
+      // Check if NSFW mode is enabled
+      if (nsfwSettings.mode !== 'nsfw' && nsfwSettings.mode !== 'hardcore') {
+        setError('NSFW AI Imagination requires NSFW or Hardcore mode to be enabled');
+        return;
       }
 
-      const creativeDescription = await aiService.generateImaginationParagraph(
-        apiConfig.provider,
-        apiConfig.keys[apiConfig.provider] || '',
-        nsfwSettings,
-        apiConfig.customConfig
-      );
+      // Gather character constraints
+      const constraints = gatherCharacterConstraints();
+      const constraintsString = buildConstraintsString(constraints);
+      
+      // If no constraints are set, provide a default message
+      const finalConstraintsString = constraintsString || 'No specific character constraints set - use creative freedom for character design';
+      
+      // Determine NSFW level for prompt
+      const nsfwLevel = nsfwSettings.mode === 'hardcore' ? 'Hardcore' : 'NSFW';
+      
+      // Build the master prompt
+      const masterPrompt = buildNSFWMasterPrompt(finalConstraintsString, nsfwLevel);
 
-      // Place the creative description directly in the main text box
-      const cleanedDescription = cleanLLMText(creativeDescription);
-      setUserInput(cleanedDescription);
+      // Call the AI service with the master prompt
+      const response = await invokeLLM('chatCompletion', {
+        prompt: masterPrompt,
+        temperature: tuningParameters.temperature,
+        top_p: tuningParameters.topP,
+        frequency_penalty: tuningParameters.frequencyPenalty,
+        presence_penalty: tuningParameters.presencePenalty,
+        maxTokens: 500,
+        stop: ['<<EOD>>', 'USER:', 'ASSISTANT:']
+      });
+
+      // Clean and set the response in the main text box
+      const cleanedResponse = cleanLLMText(response);
+      if (cleanedResponse && cleanedResponse.trim()) {
+        setUserInput(cleanedResponse.trim());
+      }
       
     } catch (error) {
-      console.error('Error generating AI imagination:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred while generating creative inspiration');
+      console.error('Error generating NSFW AI imagination:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred while generating NSFW creative inspiration');
     } finally {
       setIsGeneratingRandom(false);
     }
@@ -1449,9 +1644,7 @@ function App(): JSX.Element {
   }, []);
 
   return isLoadingGateActive ? (
-    <LoadingScreen progress={loadProgress} statusText={loadStatus} />
-  ) : showLogoAnimation ? (
-    <LogoAnimation show={showLogoAnimation} />
+    <LogoAnimation show={isLoadingGateActive} progress={loadProgress} statusText={loadStatus} />
   ) : !isAgeVerified ? (
     <AgeVerificationModal 
       onConfirm={() => handleAgeVerification(true)} 
@@ -1664,14 +1857,21 @@ function App(): JSX.Element {
               onChange={setAdvancedSettings}
             />
             
+            <ModelTuning
+              parameters={tuningParameters}
+              onParametersChange={setTuningParameters}
+            />
+            
             <PromptInput
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onGenerate={handleGenerate}
               onRandom={handleGenerateKeywords}
               onAIImagination={handleAIImagination}
+              onEnhance={handleEnhance}
               isLoading={isLoading}
               isGeneratingRandom={isGeneratingKeywords}
+              isEnhancing={isEnhancing}
               onSaveSnippet={handleInitiateSaveSnippet}
               onLockSelection={(text) => {
                 if (!lockedPhrases.includes(text)) {
@@ -1680,6 +1880,7 @@ function App(): JSX.Element {
               }}
               lockedPhrases={lockedPhrases}
               onRemoveLockedPhrase={(text) => setLockedPhrases(prev => prev.filter(p => p !== text))}
+              nsfwMode={nsfwSettings.mode}
             />
             {/* PromptInput temporarily removed during JSX bisection to locate syntax error */}
             

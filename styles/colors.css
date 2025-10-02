@@ -32,3 +32,107 @@ body.theme-text { color: var(--text); }
 .text-indigo-500 { color: var(--accent) !important; }
 .hover\:text-indigo-400:hover { color: #4F46E5 !important; }
 .focus\:ring-accent:focus { box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 60%, transparent); }
+
+/* ========================= */
+/* Animations and interactions */
+/* ========================= */
+
+/* General fade-in */
+.animate-fade-in { animation: fadeIn 300ms ease-out both; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Overlay fade-out for splash/overlay screens */
+.animate-overlay-fade-out { animation: overlayFadeOut 500ms ease-in forwards; }
+@keyframes overlayFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Logo entrance with subtle scale */
+.animate-logo-fade-in-scale { animation: logoIn 600ms cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform, opacity; }
+@keyframes logoIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); filter: drop-shadow(0 0 0 rgba(99,102,241,0)); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: drop-shadow(0 6px 18px rgba(99,102,241,0.35)); }
+}
+
+/* Blinking caret for typing effect */
+.animate-blink { animation: blink 900ms steps(1, end) infinite; color: var(--accent); }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Progress bar track shimmer */
+.progress-track { position: relative; overflow: hidden; }
+.progress-track::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0) 100%);
+  transform: translateX(-100%);
+  animation: shimmer 1200ms linear infinite;
+}
+@keyframes shimmer { to { transform: translateX(100%); } }
+
+/* GPU-accelerated progress fill (use scaleX instead of width) */
+.progress-fill {
+  transform-origin: left center;
+  transition: transform 180ms ease-out;
+  will-change: transform;
+}
+
+/* Interactive press/hover micro-interactions */
+.pressable { transition: transform 120ms ease, box-shadow 160ms ease; will-change: transform; }
+.pressable:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
+.pressable:active { transform: scale(0.97); }
+
+/* Accent glow utility for special elements */
+.accent-glow { box-shadow: 0 0 0 0 rgba(99,102,241,0.0); animation: accentGlow 2600ms ease-in-out infinite; }
+@keyframes accentGlow {
+  0%,100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.0); }
+  50% { box-shadow: 0 0 24px 4px rgba(99,102,241,0.35); }
+}
+
+/* ========================= */
+/* WOW add-ons (subtle, performant) */
+/* ========================= */
+
+/* Primary button: animated gradient + soft glow (enabled state only) */
+.btn-primary-wow {
+  position: relative;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 92%, #4F46E5), color-mix(in oklab, var(--accent) 84%, #7C3AED));
+  transition: transform 120ms ease, box-shadow 200ms ease, filter 200ms ease;
+  box-shadow: 0 8px 24px rgba(99,102,241,0.25);
+  will-change: transform, box-shadow, filter;
+}
+.btn-primary-wow:hover { filter: brightness(1.05); box-shadow: 0 10px 28px rgba(99,102,241,0.35); }
+.btn-primary-wow:active { transform: translateY(1px) scale(0.99); }
+.btn-primary-wow::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(120% 120% at 10% 10%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 60%);
+  opacity: 0.6; pointer-events: none;
+}
+
+/* Toolbar: glassy surface and divider glow */
+.wow-toolbar {
+  backdrop-filter: saturate(1.1) blur(6px);
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.0));
+  border-color: color-mix(in oklab, var(--border) 85%, transparent);
+}
+.wow-divider { box-shadow: inset 0 1px 0 rgba(99,102,241,0.25); }
+
+/* Textarea focus: animated ring using box-shadow (GPU friendly) */
+.wow-textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 55%, transparent), 0 0 24px rgba(99,102,241,0.25);
+  transition: box-shadow 160ms ease;
+}
+
+/* Card appear: fade + lift */
+.wow-card-in { animation: cardIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform, opacity; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Icon button hover: subtle glow */
+.wow-icon-btn { transition: transform 120ms ease, box-shadow 160ms ease; }
+.wow-icon-btn:hover { box-shadow: 0 6px 16px rgba(99,102,241,0.18); transform: translateY(-1px); }

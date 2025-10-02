@@ -12,15 +12,15 @@ const barWidth = (n: number) => `${clamp(n)}%`;
 
 const LoadingScreen: React.FC<LoadingScreenProps> = ({ progress, statusText }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center">
-      <div className="w-64 mb-6 opacity-90">
-        <Logo className="w-full" />
+    <div className="fixed inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center animate-fade-in">
+      <div className="w-64 mb-6 opacity-90 animate-logo-fade-in-scale">
+        <Logo className="w-full accent-glow" />
       </div>
       <div className="w-3/4 max-w-xl">
-        <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden border border-gray-700">
+        <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden border border-gray-700 progress-track">
           <div
-            className="h-full bg-accent transition-all"
-            style={{ width: barWidth(progress) }}
+            className="h-full theme-accent progress-fill"
+            style={{ transform: `scaleX(${clamp(progress) / 100})` }}
           />
         </div>
         <div className="mt-3 text-sm text-gray-300 text-center">

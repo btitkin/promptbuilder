@@ -91,7 +91,7 @@ export const PromptOutput: React.FC<PromptOutputProps> = ({ prompts, isLoading, 
           const isShared = sharedIndex === index;
           const imageButtonTooltip = supportsImageGeneration ? "Generate Image" : "Image generation only available for Gemini or OpenAI";
           return (
-            <div key={index} className="relative bg-gray-900 rounded-md p-4 text-gray-200 whitespace-pre-wrap font-mono text-sm border border-gray-700">
+            <div key={index} className="relative bg-gray-900 rounded-md p-4 text-gray-200 whitespace-pre-wrap font-mono text-sm border border-gray-700 wow-card-in">
               <h4 className="text-xs font-semibold text-indigo-400 mb-2 uppercase">Variation {index + 1}</h4>
               <div
                 className="w-full bg-gray-800/70 border border-gray-700 rounded-md p-3 text-gray-100 whitespace-pre-wrap font-mono text-sm resize-y overflow-auto min-h-[120px] max-h-[60vh]"
@@ -103,7 +103,7 @@ export const PromptOutput: React.FC<PromptOutputProps> = ({ prompts, isLoading, 
                   <div title={imageButtonTooltip}>
                     <button
                         onClick={() => onSendToGenerator(prompt)}
-                        className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-colors bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-700"
+                        className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-colors wow-icon-btn pressable bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-700"
                         aria-label={`Generate image for variation ${index + 1}`}
                         disabled={!supportsImageGeneration}
                     >
@@ -112,7 +112,7 @@ export const PromptOutput: React.FC<PromptOutputProps> = ({ prompts, isLoading, 
                   </div>
                   <button
                       onClick={() => handleShare(prompt, index)}
-                      className={`p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${
+                      className={`p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-colors wow-icon-btn pressable ${
                         isShared 
                           ? 'bg-blue-500/20 text-blue-400' 
                           : 'bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white'
@@ -124,7 +124,7 @@ export const PromptOutput: React.FC<PromptOutputProps> = ({ prompts, isLoading, 
                   </button>
                   <button
                       onClick={() => handleCopy(prompt, index)}
-                      className={`p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${
+                      className={`p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-colors wow-icon-btn pressable ${
                         isCopied 
                           ? 'bg-green-500/20 text-green-400' 
                           : 'bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white'
@@ -140,7 +140,7 @@ export const PromptOutput: React.FC<PromptOutputProps> = ({ prompts, isLoading, 
         })}
         
         {!isLoading && prompts.length > 0 && negativePrompt.trim() && (
-            <div className="relative bg-gray-900 rounded-md p-4 text-gray-200 whitespace-pre-wrap font-mono text-sm border border-gray-700 mt-4">
+            <div className="relative bg-gray-900 rounded-md p-4 text-gray-200 whitespace-pre-wrap font-mono text-sm border border-gray-700 mt-4 wow-card-in">
               <h4 className="text-xs font-semibold text-red-400 mb-2 uppercase">Negative Prompt</h4>
               <div
                 className="w-full bg-gray-800/70 border border-gray-700 rounded-md p-3 text-gray-100 whitespace-pre-wrap font-mono text-sm resize-y overflow-auto min-h-[100px] max-h-[50vh]"
@@ -151,7 +151,7 @@ export const PromptOutput: React.FC<PromptOutputProps> = ({ prompts, isLoading, 
                <div className="absolute top-2 right-2 flex">
                     <button
                         onClick={handleNegativeCopy}
-                        className={`p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${
+                        className={`p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-colors wow-icon-btn pressable ${
                           isNegativeCopied
                             ? 'bg-green-500/20 text-green-400' 
                             : 'bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white'

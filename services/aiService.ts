@@ -185,7 +185,8 @@ export const generatePromptWithGuidance = async (
     apiKey: string,
     userInput: string,
     selectedModel: string,
-    customConfig?: CustomApiConfig
+    customConfig?: CustomApiConfig,
+    tuningParams?: { temperature?: number; topP?: number; frequencyPenalty?: number; presencePenalty?: number }
 ): Promise<string> => {
     const masterPrompt = `You are a world-class prompt engineering AI. Your one and only task is to take a set of character keywords and reformat them into a perfect, ready-to-use prompt for a specific target AI image model.
 
@@ -204,8 +205,10 @@ Final Prompt for ${selectedModel}:
       // Use local Electron LLM directly; avoid any HTTP requests
       const response = await invokeLLM('chatCompletion', {
         prompt: masterPrompt,
-        temperature: 0.6,
-        top_p: 0.9,
+        temperature: tuningParams?.temperature ?? 0.6,
+        top_p: tuningParams?.topP ?? 0.9,
+        frequency_penalty: tuningParams?.frequencyPenalty ?? 0.0,
+        presence_penalty: tuningParams?.presencePenalty ?? 0.0,
         maxTokens: 280,
         stop: ['<<EOD>>']
       });
@@ -228,8 +231,26 @@ export const generateImaginationParagraph = async (
   provider: ApiProvider,
   apiKey: string,
   nsfwSettings: NsfwSettingsState,
-  customConfig?: CustomApiConfig
+  customConfig?: CustomApiConfig,
+  tuningParams?: { temperature?: number; topP?: number; frequencyPenalty?: number; presencePenalty?: number }
 ): Promise<string> => {
+  // First: support Local (Electron, GGUF) explicitly
+  if (provider === 'custom_local') {
+    try {
+      const response = await invokeLLM('chatCompletion', {
+      prompt: `You are a creative writer. Your only task is to write a single paragraph.\nCRITICAL RULE: Your output MUST be a PARAGRAPH with full sentences.\nContent Policy: The content of the paragraph MUST match the user's SFW/NSFW/Hardcore setting: ${nsfwSettings.mode}.\n\nWrite one single, creative, descriptive paragraph in English about a character in a compelling scene.`,
+      temperature: tuningParams?.temperature ?? 0.7,
+      top_p: tuningParams?.topP ?? 0.9,
+      frequency_penalty: tuningParams?.frequencyPenalty ?? 0.0,
+      presence_penalty: tuningParams?.presencePenalty ?? 0.0,
+      maxTokens: 280,
+      stop: ['<<EOD>>']
+    });
+      return response || '';
+    } catch (e) {
+      throw new Error('Local LLM (Electron) is unavailable or failed to generate. Verify model path and cache permissions.');
+    }
+  }
   if (provider === 'google_gemini') {
     return gemini.generateImaginationParagraph(apiKey, nsfwSettings);
   }
@@ -243,14 +264,16 @@ export const generateImaginationParagraph = async (
   try {
     const response = await invokeLLM('chatCompletion', {
       prompt: `You are a creative writer. Your only task is to write a single paragraph.\nCRITICAL RULE: Your output MUST be a PARAGRAPH with full sentences.\nContent Policy: The content of the paragraph MUST match the user's SFW/NSFW/Hardcore setting: ${nsfwSettings.mode}.\n\nWrite one single, creative, descriptive paragraph in English about a character in a compelling scene.`,
-      temperature: 0.7,
-      top_p: 0.9,
+      temperature: tuningParams?.temperature ?? 0.7,
+      top_p: tuningParams?.topP ?? 0.9,
+      frequency_penalty: tuningParams?.frequencyPenalty ?? 0.0,
+      presence_penalty: tuningParams?.presencePenalty ?? 0.0,
       maxTokens: 280,
       stop: ['<<EOD>>']
     });
     return response || '';
   } catch (e) {
-    throw new Error('AI Imagination is only supported for Gemini and Qwen in this configuration.');
+    throw new Error('AI Imagination supports Local (Electron), Custom API (OpenAI-compatible), or Gemini. Configure one of these providers and ensure Local model loads correctly.');
   }
 };
 

@@ -24,6 +24,8 @@ export interface InvokeLLMPayload {
 interface ElectronApi {
   invokeLLM: (task: string, payload: InvokeLLMPayload) => Promise<{ result?: string; error?: string } | string>;
   on?: (channel: string, callback: (data: any) => void) => () => void;
+  // Optional helper exposed by preload to check local model status
+  checkModelStatus?: () => Promise<{ available: boolean; sizeMB?: number; modelPath?: string }>;
 }
 
 declare global {
@@ -36,9 +38,18 @@ declare global {
 export function isElectronAvailable(): boolean {
   try {
     const available = typeof window !== 'undefined' && typeof (window as any).electronAPI !== 'undefined';
-    // Debug log for portable build
-    // eslint-disable-next-line no-console
-    console.log('[electronService] isElectronAvailable=', available);
+    // Avoid noisy console spam: log only once per session
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    if (!(window as any).__electronAvailLogged) {
+      try {
+        // eslint-disable-next-line no-console
+        console.log('[electronService] isElectronAvailable=', available);
+      } catch {}
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      (window as any).__electronAvailLogged = true;
+    }
     return available;
   } catch {
     return false;
@@ -114,4 +125,30 @@ export function on(channel: string, callback: (data: any) => void): () => void {
     return () => {};
   }
   return window.electronAPI.on(channel, callback);
+}
+
+/**
+ * Lightweight status probe for the local model.
+ * Safe to call from UI to decide whether to unblock splash screen.
+ */
+export async function checkModelStatus(): Promise<{ available: boolean; sizeMB?: number; modelPath?: string }> {
+  try {
+    if (!isElectronAvailable() || !window.electronAPI?.checkModelStatus) {
+      return { available: false };
+    }
+    const result = await window.electronAPI.checkModelStatus();
+    if (result && typeof result === 'object') {
+      // Support both shapes: { available } and { modelAvailable }
+      const available = (result as any).available ?? (result as any).modelAvailable ?? false;
+      const sizeMB = (result as any).sizeMB ?? (result as any).modelSize ?? undefined;
+      const modelPath = (result as any).modelPath ?? undefined;
+      return { available: !!available, sizeMB, modelPath };
+    }
+    // Unknown shape
+    return { available: false };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[electronService] checkModelStatus error', err);
+    return { available: false };
+  }
 }

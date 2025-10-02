@@ -35,3 +35,5 @@ release/
 # Ignore portable build variants (do not push to GitHub)
 portable-build-qwen/
 portable-build-qwen2/
+gemma3-portable-build-v.1.0.2/
+portablebuild-qwen2/
