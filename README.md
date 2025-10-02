@@ -166,3 +166,139 @@ For ComfyUI users, switch to the `comfyui-node` branch and follow the installati
 
 ## License
 MIT License. See LICENSE for details.
+# Prompt Builder
+
+Professional prompt-generation toolkit for AI image and video models. Prompt Builder transforms a simple description into multiple, structured, model-aware prompts. It offers a modern desktop app (Electron) and a web UI for development, with support for local LLMs and major online providers.
+
+## Overview
+
+Prompt Builder helps you move from idea to production-ready prompts quickly and consistently. It understands model-specific syntax (tag-based and natural language), applies style and content rules, and supports selective variation for batch workflows.
+
+## Key Features
+
+- Intelligent prompt expansion from a short description into multiple variants
+- Model-aware formatting for tag-based (e.g., Stable Diffusion) and natural-language models
+- Local LLM integration (Electron) with built-in support for GGUF models
+- Online API providers (Gemini and any OpenAI-compatible API via Custom provider)
+- Advanced controls: negative prompts, seeds, aspect ratios, and custom parameters
+- Style system: realistic and anime styles, plus fine-grained preset controls
+- Selective randomization and batch generation with consistency options
+- History and favorites; saved snippets for reusable phrases
+- Clean, responsive UI built with React + Vite
+
+## System Requirements
+
+- Windows 10/11 (64-bit) recommended for the Electron app
+- Node.js 18+ and npm
+- For local LLM usage (Electron): GGUF model file; 8 GB RAM minimum (16 GB recommended)
+
+## Installation
+
+```bash
+git clone https://github.com/btitkin/promptbuilder.git
+cd promptbuilder
+npm install
+```
+
+## Quick Start
+
+### Web Dev Server (UI only)
+
+Runs the UI for rapid development. Local LLM features are disabled in a regular browser; use an online provider.
+
+```bash
+npm run dev
+# Open http://localhost:5173/ (the dev server may choose a nearby port)
+```
+
+### Electron Desktop App (Local LLM + Full Features)
+
+Starts Vite and Electron together for the desktop app experience. This mode enables the local LLM bridge and full functionality.
+
+```bash
+npm run electron:dev
+```
+
+If port `5173` is busy, the dev server may switch to `5174`; the Electron app will fall back automatically.
+
+## Providers and API Keys
+
+Prompt Builder can operate with either a local LLM (Electron) or online APIs.
+
+### Local LLM (Electron)
+
+- Place a GGUF model in `models/` (create the folder if it doesn't exist). Example filename:
+  - `models/Qwen2.5-7B-Instruct-Q4_K_M.gguf`
+- The Electron app looks for a default model file at startup. If you use a different filename, update the path in `main.js` accordingly.
+- GPU acceleration is enabled by default when available.
+
+### Online APIs
+
+- Gemini: set an environment variable `GEMINI_API_KEY` or paste the key in the UI under API Settings.
+- Custom provider: any OpenAI-compatible API. Configure base URL and model name in the UI.
+
+## Configuration
+
+- Environment variables (when running locally):
+  - `GEMINI_API_KEY` – used by the Gemini provider.
+- User settings are stored locally (browser/electron storage). No keys or prompts are sent anywhere except to the providers you configure.
+
+## Build and Distribution
+
+Build the web assets and the desktop application.
+
+```bash
+# Build web assets (dist)
+npm run build
+
+# Build Electron app via electron-builder
+npm run build:electron
+
+# Produce installers/portable distributions
+npm run dist
+```
+
+## Scripts
+
+- `npm run dev` – start Vite dev server (UI only)
+- `npm run electron:dev` – start Vite + Electron for development
+- `npm run build` – build web assets
+- `npm run build:electron` – build Electron app
+- `npm run dist` – create installers/portable distributions
+- `npm test` – run unit tests (vitest)
+
+## Project Structure
+
+```
+components/           # React components (PromptInput, PromptOutput, presets, etc.)
+services/             # Provider integrations and utilities
+styles/               # Global theme and animation classes
+electron/main.js      # Electron main process (LLM bridge, model loading)
+index.html, index.tsx # App entry points
+```
+
+Portable build variants used for packaging are not part of the `main` branch distribution.
+
+## Testing
+
+```bash
+npm test
+```
+
+End-to-end tests are available under `tests-e2e/`. The dev server must be running for browser-based tests.
+
+## Troubleshooting
+
+- Electron API unavailable in browser: use `npm run electron:dev` instead of `npm run dev`.
+- Dev server port conflict: Vite may switch ports automatically; the Electron app will follow.
+- Model file not found: ensure a GGUF file exists under `models/` and that its path matches the configuration in `electron/main.js`.
+- Online provider errors: verify API keys and model names in API Settings.
+
+## Security and Privacy
+
+- When using a local LLM, all generation happens on your machine. Data does not leave your computer.
+- API keys provided for online services are stored locally and sent only to the configured provider.
+
+## License
+
+This project is licensed under the MIT License. See `LICENSE` for details.
